@@ -321,8 +321,9 @@
         });
     }
 
-    const host = (window.location.hostname === '0.0.0.0' || window.location.hostname === '' || window.location.hostname === 'localhost') ? '127.0.0.1' : window.location.hostname;
-    const API = window.location.origin;
+  const API = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+    ? 'http://127.0.0.1:8000'
+    : window.location.origin;
 
     let db;
     let isServerOnline = false;
