@@ -1,12 +1,15 @@
 import os
-from fastapi import FastAPI, HTTPException, Depends
+from typing import List, Optional
+from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+from pydantic import BaseModel
 from sqlmodel import Field, SQLModel, create_engine, Session, select
-from typing import Optional, List
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
+# ----------------------------------------------------
+# ۱. ساختار دیتابیس (Models)
+# ----------------------------------------------------
 class Trip(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     title: str
@@ -16,15 +19,19 @@ class Trip(SQLModel, table=True):
 
 class Participant(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
+    trip_id: int = Field(foreign_key="trip.id")
     full_name: str
     national_id: str
     phone: str
-    payment_status: str
     paid_amount: float
-    trip_id: int = Field(foreign_key="trip.id")
+    is_approved: bool = False
 
-sqlite_url = "sqlite:///quick_abarham.db"
-engine = create_engine(sqlite_url, echo=False)
+# ----------------------------------------------------
+# ۲. تنظیمات دیتابیس SQLite
+# ----------------------------------------------------
+sqlite_file_name = "quick_abarham.db"
+sqlite_url = f"sqlite:///{sqlite_file_name}"
+engine = create_engine(sqlite_url, connect_args={"check_same_thread": False})
 
 def create_db_and_tables():
     SQLModel.metadata.create_all(engine)
@@ -33,9 +40,11 @@ def get_session():
     with Session(engine) as session:
         yield session
 
-app = FastAPI(title="سیستم مدیریت ابرهام")
+# ----------------------------------------------------
+# ۳. ساخت اپلیکیشن FastAPI و تنظیمات CORS
+# ----------------------------------------------------
+app = FastAPI(title="Abarham App")
 
-# --- تنظیمات CORS ---
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -48,26 +57,11 @@ app.add_middleware(
 def on_startup():
     create_db_and_tables()
 
-# سرو فایل‌های PWA
-@app.get("/")
-def read_index():
-    return FileResponse(os.path.join(BASE_DIR, "index.html"))
-
-@app.get("/manifest.json")
-def read_manifest():
-    return FileResponse(os.path.join(BASE_DIR, "manifest.json"))
-
-@app.get("/sw.js")
-def read_sw():
-    return FileResponse(os.path.join(BASE_DIR, "sw.js"), media_type="application/javascript")
-
-@app.get("/logo.png")
-def read_logo():
-    return FileResponse(os.path.join(BASE_DIR, "logo.png"))
-
-# --- APIهای تورها ---
+# ----------------------------------------------------
+# ۴. مسیرهای مربوط به API (سفرها و مسافران)
+# ----------------------------------------------------
 @app.get("/trips/", response_model=List[Trip])
-def get_trips(session: Session = Depends(get_session)):
+def read_trips(session: Session = Depends(get_session)):
     return session.exec(select(Trip)).all()
 
 @app.post("/trips/", response_model=Trip)
@@ -77,36 +71,12 @@ def create_trip(trip: Trip, session: Session = Depends(get_session)):
     session.refresh(trip)
     return trip
 
-@app.put("/trips/{trip_id}", response_model=Trip)
-def update_trip(trip_id: int, updated_trip: Trip, session: Session = Depends(get_session)):
-    db_trip = session.get(Trip, trip_id)
-    if not db_trip:
-        raise HTTPException(status_code=404, detail="تور پیدا نشد")
-    db_trip.title = updated_trip.title
-    db_trip.destination = updated_trip.destination
-    db_trip.date = updated_trip.date
-    db_trip.price = updated_trip.price
-    session.add(db_trip)
-    session.commit()
-    session.refresh(db_trip)
-    return db_trip
-
-@app.delete("/trips/{trip_id}")
-def delete_trip(trip_id: int, session: Session = Depends(get_session)):
-    db_trip = session.get(Trip, trip_id)
-    if not db_trip:
-        raise HTTPException(status_code=404, detail="تور پیدا نشد")
-    participants = session.exec(select(Participant).where(Participant.trip_id == trip_id)).all()
-    for p in participants:
-        session.delete(p)
-    session.delete(db_trip)
-    session.commit()
-    return {"message": "حذف شد"}
-
-# --- APIهای مسافران ---
 @app.get("/participants/", response_model=List[Participant])
-def get_participants(session: Session = Depends(get_session)):
-    return session.exec(select(Participant)).all()
+def read_participants(trip_id: Optional[int] = None, session: Session = Depends(get_session)):
+    query = select(Participant)
+    if trip_id:
+        query = query.where(Participant.trip_id == trip_id)
+    return session.exec(query).all()
 
 @app.post("/participants/", response_model=Participant)
 def create_participant(participant: Participant, session: Session = Depends(get_session)):
@@ -119,13 +89,10 @@ def create_participant(participant: Participant, session: Session = Depends(get_
 def update_participant(participant_id: int, updated_p: Participant, session: Session = Depends(get_session)):
     db_p = session.get(Participant, participant_id)
     if not db_p:
-        raise HTTPException(status_code=404, detail="مسافر پیدا نشد")
-    db_p.full_name = updated_p.full_name
-    db_p.national_id = updated_p.national_id
-    db_p.phone = updated_p.phone
-    db_p.payment_status = updated_p.payment_status
-    db_p.paid_amount = updated_p.paid_amount
-    db_p.trip_id = updated_p.trip_id
+        raise HTTPException(status_code=404, detail="مسافر یافت نشد")
+    p_data = updated_p.dict(exclude_unset=True)
+    for key, value in p_data.items():
+        setattr(db_p, key, value)
     session.add(db_p)
     session.commit()
     session.refresh(db_p)
@@ -135,7 +102,19 @@ def update_participant(participant_id: int, updated_p: Participant, session: Ses
 def delete_participant(participant_id: int, session: Session = Depends(get_session)):
     db_p = session.get(Participant, participant_id)
     if not db_p:
-        raise HTTPException(status_code=404, detail="مسافر پیدا نشد")
+        raise HTTPException(status_code=404, detail="مسافر یافت نشد")
     session.delete(db_p)
     session.commit()
-    return {"message": "حذف شد"}
+    return {"ok": True}
+
+# ----------------------------------------------------
+# ۵. سرو فایل‌های فرانت‌اند (index.html, js, css)
+# ----------------------------------------------------
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+@app.get("/")
+def read_root():
+    return FileResponse(os.path.join(BASE_DIR, "index.html"))
+
+# اتصال سایر فایل‌های فرانت (مثل sw.js و manifest.json)
+app.mount("/", StaticFiles(directory=BASE_DIR, html=True), name="static")
