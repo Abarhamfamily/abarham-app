@@ -119,22 +119,10 @@ import asyncio
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # ایجاد دیتابیس در زمان استارت
     create_db_and_tables()
-    
-    # ایمپورت داخلی ربات برای جلوگیری از NameError و Circular Import
-    try:
-        from bot import app as bot_app
-        # اجرای ربات در یک Thread جداگانه
-        asyncio.create_task(asyncio.to_thread(bot_app.run_polling))
-        print("🤖 ربات تلگرام با موفقیت در کنار FastAPI روشن شد.")
-    except Exception as e:
-        print(f"⚠️ خطایی در اجرای ربات تلگرام رخ داد: {e}")
-
     yield
 
 app = FastAPI(lifespan=lifespan)
-
 # ۱. افزودن مسیر اصلی برای جلوگیری از خطای Not Found
 @app.get("/")
 def read_root():
