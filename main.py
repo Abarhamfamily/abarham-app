@@ -102,7 +102,6 @@ def create_participant(participant: Participant, session: Session = Depends(get_
 import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
-from bot import main as run_bot  # وارد کردن تابع اصلی ربات
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -117,7 +116,7 @@ app = FastAPI(lifespan=lifespan)
 import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
-from bot import main as run_bot  # اتصال به ربات
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -127,3 +126,31 @@ async def lifespan(app: FastAPI):
 
 # افزودن lifespan به FastAPI
 app = FastAPI(title="Abarham App", lifespan=lifespan)
+from fastapi import FastAPI
+from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.staticfiles import StaticFiles
+import os
+
+# اگر app از قبل تعریف شده، همان را استفاده کن
+# app = FastAPI()
+
+# ۱. افزودن مسیر اصلی برای جلوگیری از خطای Not Found
+@app.get("/")
+def read_root():
+    # اگر فایل index.html داری این خط اجرا شود، در غیر این صورت پیام زیر
+    if os.path.exists("index.html"):
+        return FileResponse("index.html")
+    return {"message": "اپلیکیشن ابرهام با موفقیت فعال است 🏕"}
+
+# ۲. دسترسی اپ گوشی به فایل‌های PWA
+@app.get("/manifest.json")
+def get_manifest():
+    return FileResponse("manifest.json")
+
+@app.get("/sw.js")
+def get_sw():
+    return FileResponse("sw.js")
+
+@app.get("/logo.png")
+def get_logo():
+    return FileResponse("logo.png")
