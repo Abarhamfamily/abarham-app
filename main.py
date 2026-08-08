@@ -6,6 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from sqlmodel import Field, SQLModel, create_engine, Session, select
+SQLModel.metadata.create_all(engine)
 
 # ----------------------------------------------------
 # ۱. ساختار دیتابیس (Models)
@@ -44,7 +45,9 @@ def get_session():
 # ۳. ساخت اپلیکیشن FastAPI و تنظیمات CORS
 # ----------------------------------------------------
 app = FastAPI(title="Abarham App")
-
+@app.on_event("startup")
+def on_startup():
+    SQLModel.metadata.create_all(engine)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
