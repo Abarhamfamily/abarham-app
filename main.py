@@ -105,8 +105,8 @@ from fastapi import FastAPI
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # هنگام روشن شدن برنامه، ربات هم در پس‌زمینه روشن می‌شود
-    asyncio.create_task(asyncio.to_thread(run_bot))
+    # فقط ساخت دیتابیس (بدون صدا زدن ربات)
+    create_db_and_tables()
     yield
 
 # مقداردهی اولیه FastAPI با استفاده از lifespan
