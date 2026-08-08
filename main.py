@@ -154,3 +154,16 @@ def get_sw():
 @app.get("/logo.png")
 def get_logo():
     return FileResponse("logo.png")
+from fastapi.responses import HTMLResponse
+
+@app.get("/", response_class=HTMLResponse)
+def read_root():
+    return """
+    <html>
+        <head><title>Abarham App</title></head>
+        <body style="font-family: sans-serif; text-align: center; padding-top: 50px;">
+            <h1>🏕 به اپلیکیشن ابرهام خوش آمدید</h1>
+            <p>سیستم با موفقیت فعال است.</p>
+        </body>
+    </html>
+    """
