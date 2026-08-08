@@ -99,3 +99,18 @@ def create_participant(participant: Participant, session: Session = Depends(get_
     session.commit()
     session.refresh(participant)
     return participant
+import asyncio
+from contextlib import asynccontextmanager
+from fastapi import FastAPI
+from bot import main as run_bot  # وارد کردن تابع اصلی ربات
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # هنگام روشن شدن برنامه، ربات هم در پس‌زمینه روشن می‌شود
+    asyncio.create_task(asyncio.to_thread(run_bot))
+    yield
+
+# مقداردهی اولیه FastAPI با استفاده از lifespan
+app = FastAPI(lifespan=lifespan)
+
+# ... (بقیه مسیرها و آدرس‌های قبلی شما در main.py سر جای خود باقی می‌مانند)
