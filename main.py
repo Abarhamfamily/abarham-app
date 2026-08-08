@@ -114,3 +114,16 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 # ... (بقیه مسیرها و آدرس‌های قبلی شما در main.py سر جای خود باقی می‌مانند)
+import asyncio
+from contextlib import asynccontextmanager
+from fastapi import FastAPI
+from bot import main as run_bot  # اتصال به ربات
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # اجرای ربات به صورت async پس از بالا آمدن سرور
+    asyncio.create_task(asyncio.to_thread(run_bot))
+    yield
+
+# افزودن lifespan به FastAPI
+app = FastAPI(title="Abarham App", lifespan=lifespan)
