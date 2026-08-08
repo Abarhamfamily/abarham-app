@@ -115,24 +115,25 @@ app = FastAPI(lifespan=lifespan)
 # ... (بقیه مسیرها و آدرس‌های قبلی شما در main.py سر جای خود باقی می‌مانند)
 import asyncio
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
-
+import asyncio
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # اجرای ربات به صورت async پس از بالا آمدن سرور
-    asyncio.create_task(asyncio.to_thread(run_bot))
+    # ایجاد دیتابیس در زمان استارت
+    create_db_and_tables()
+    
+    # ایمپورت داخلی ربات برای جلوگیری از NameError و Circular Import
+    try:
+        from bot import app as bot_app
+        # اجرای ربات در یک Thread جداگانه
+        asyncio.create_task(asyncio.to_thread(bot_app.run_polling))
+        print("🤖 ربات تلگرام با موفقیت در کنار FastAPI روشن شد.")
+    except Exception as e:
+        print(f"⚠️ خطایی در اجرای ربات تلگرام رخ داد: {e}")
+
     yield
 
-# افزودن lifespan به FastAPI
-app = FastAPI(title="Abarham App", lifespan=lifespan)
-from fastapi import FastAPI
-from fastapi.responses import FileResponse, HTMLResponse
-from fastapi.staticfiles import StaticFiles
-import os
-
-# اگر app از قبل تعریف شده، همان را استفاده کن
-# app = FastAPI()
+app = FastAPI(lifespan=lifespan)
 
 # ۱. افزودن مسیر اصلی برای جلوگیری از خطای Not Found
 @app.get("/")
