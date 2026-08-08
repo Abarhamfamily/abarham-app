@@ -47,17 +47,16 @@ def read_root():
     </html>
     """
 
-@app.get("/manifest.json")
-def get_manifest():
-    if os.path.exists("manifest.json"):
-        return FileResponse("manifest.json")
-    raise HTTPException(status_code=404)
+from fastapi.responses import Response
 
+# پاکسازی و لغو ثبت Service Worker قبلی
 @app.get("/sw.js")
 def get_sw():
-    if os.path.exists("sw.js"):
-        return FileResponse("sw.js")
-    raise HTTPException(status_code=404)
+    return Response(content="self.registration.unregister();", media_type="application/javascript")
+
+@app.get("/manifest.json")
+def get_manifest():
+    return {}
 
 # ۴. APIها برای دریافت اطلاعات
 @app.get("/trips", response_model=List[Trip])
