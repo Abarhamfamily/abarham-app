@@ -1,158 +1,71 @@
 import os
-from typing import List, Optional
-from fastapi import FastAPI, HTTPException, Depends, status
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
-from pydantic import BaseModel
+from contextlib import asynccontextmanager
+from typing import Optional, List
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import HTMLResponse, FileResponse
 from sqlmodel import Field, SQLModel, create_engine, Session, select
 
-# --------------------------------------------------
-# ۱. ساختار دیتابیس (Models)
-# --------------------------------------------------
+# ۱. تعریف مدل‌ها
 class Trip(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     title: str
-    destination: str
-    date: str
-    price: float
+    description: Optional[str] = None
 
 class Participant(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
-    trip_id: int
     full_name: str
     national_id: str
-    phone: str
+    phone_number: str
+    trip_id: int = Field(foreign_key="trip.id")
 
-# --------------------------------------------------
-# ۲. تنظیمات دیتابیس SQLite
-# --------------------------------------------------
+# ۲. اتصال به دیتابیس
 sqlite_file_name = "quick_abarham.db"
 sqlite_url = f"sqlite:///{sqlite_file_name}"
 engine = create_engine(sqlite_url, connect_args={"check_same_thread": False})
 
-def get_session():
-    with Session(engine) as session:
-        yield session
-
-# --------------------------------------------------
-# ۳. ساخت اپلیکیشن FastAPI و رویداد Startup
-# --------------------------------------------------
-app = FastAPI(title="Abarham Tourism App")
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-@app.on_event("startup")
-def on_startup():
-    # ساخت خودکار جدول‌ها هنگام روشن شدن سرور
+def create_db_and_tables():
     SQLModel.metadata.create_all(engine)
 
-# --------------------------------------------------
-# ۴. سرویس فایل‌های استاتیک و HTML
-# --------------------------------------------------
-@app.get("/")
-def read_root():
-    if os.path.exists("index.html"):
-        return FileResponse("index.html")
-    return {"message": "Abarham API is running!"}
-
-# --------------------------------------------------
-# ۵. APIهای مدیریت تورها (Trips)
-# --------------------------------------------------
-@app.get("/trips", response_model=List[Trip])
-def get_trips(session: Session = Depends(get_session)):
-    trips = session.exec(select(Trip)).all()
-    return trips
-
-@app.post("/trips", response_model=Trip)
-def create_trip(trip: Trip, session: Session = Depends(get_session)):
-    session.add(trip)
-    session.commit()
-    session.refresh(trip)
-    return trip
-
-# --------------------------------------------------
-# ۶. APIهای مدیریت مسافران (Participants)
-# --------------------------------------------------
-@app.get("/participants", response_model=List[Participant])
-def get_participants(trip_id: Optional[int] = None, session: Session = Depends(get_session)):
-    statement = select(Participant)
-    if trip_id is not None:
-        statement = statement.where(Participant.trip_id == trip_id)
-    participants = session.exec(statement).all()
-    return participants
-
-@app.post("/participants", response_model=Participant)
-def create_participant(participant: Participant, session: Session = Depends(get_session)):
-    # بررسی وجود تور مرتبط
-    trip = session.get(Trip, participant.trip_id)
-    if not trip:
-        raise HTTPException(status_code=404, detail="تور مورد نظر یافت نشد.")
-    
-    session.add(participant)
-    session.commit()
-    session.refresh(participant)
-    return participant
-import asyncio
-from contextlib import asynccontextmanager
-from fastapi import FastAPI
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # فقط ساخت دیتابیس (بدون صدا زدن ربات)
-    create_db_and_tables()
-    yield
-
-# مقداردهی اولیه FastAPI با استفاده از lifespan
-app = FastAPI(lifespan=lifespan)
-
-# ... (بقیه مسیرها و آدرس‌های قبلی شما در main.py سر جای خود باقی می‌مانند)
-import asyncio
-from contextlib import asynccontextmanager
-import asyncio
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     create_db_and_tables()
     yield
 
 app = FastAPI(lifespan=lifespan)
-# ۱. افزودن مسیر اصلی برای جلوگیری از خطای Not Found
-@app.get("/")
-def read_root():
-    # اگر فایل index.html داری این خط اجرا شود، در غیر این صورت پیام زیر
-    if os.path.exists("index.html"):
-        return FileResponse("index.html")
-    return {"message": "اپلیکیشن ابرهام با موفقیت فعال است 🏕"}
 
-# ۲. دسترسی اپ گوشی به فایل‌های PWA
-@app.get("/manifest.json")
-def get_manifest():
-    return FileResponse("manifest.json")
-
-@app.get("/sw.js")
-def get_sw():
-    return FileResponse("sw.js")
-
-@app.get("/logo.png")
-def get_logo():
-    return FileResponse("logo.png")
-from fastapi.responses import HTMLResponse
-
+# ۳. مسیر اصلی وب‌سایت و اپ گوشی
 @app.get("/", response_class=HTMLResponse)
 def read_root():
+    if os.path.exists("index.html"):
+        return FileResponse("index.html")
     return """
     <html>
-        <head><title>Abarham App</title></head>
-        <body style="font-family: sans-serif; text-align: center; padding-top: 50px;">
-            <h1>🏕 به اپلیکیشن ابرهام خوش آمدید</h1>
-            <p>سیستم با موفقیت فعال است.</p>
+        <body style="font-family: tahoma, sans-serif; text-align: center; padding-top: 50px; direction: rtl;">
+            <h1>🏕 سامانه طبیعت‌گردی اَبَرهام</h1>
+            <p>سیستم با موفقیت آنلاین شد.</p>
         </body>
     </html>
     """
+
+@app.get("/manifest.json")
+def get_manifest():
+    if os.path.exists("manifest.json"):
+        return FileResponse("manifest.json")
+    raise HTTPException(status_code=404)
+
+@app.get("/sw.js")
+def get_sw():
+    if os.path.exists("sw.js"):
+        return FileResponse("sw.js")
+    raise HTTPException(status_code=404)
+
+# ۴. APIها برای دریافت اطلاعات
+@app.get("/trips", response_model=List[Trip])
+def get_trips():
+    with Session(engine) as session:
+        return session.exec(select(Trip)).all()
+
+@app.get("/participants", response_model=List[Participant])
+def get_participants():
+    with Session(engine) as session:
+        return session.exec(select(Participant)).all()
