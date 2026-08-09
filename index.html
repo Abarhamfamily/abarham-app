@@ -405,33 +405,38 @@
         }
     }
 
-    async function handleParticipantSubmit(e) {
-        e.preventDefault();
-        const pId = document.getElementById('p_id').value;
-        const participantData = {
-            trip_id: parseInt(document.getElementById('p_trip_id').value),
-            full_name: document.getElementById('p_name').value,
-            national_id: document.getElementById('p_national_id').value,
-            phone: document.getElementById('p_phone').value,
-            payment_status: document.getElementById('p_status').value,
-            paid_amount: parseFloat(document.getElementById('p_paid').value)
-        };
+   async function handleTripSubmit(e) {
+    e.preventDefault();
+    
+    const tripId = document.getElementById('trip_id')?.value;
+    const tripData = {
+        title: document.getElementById('title').value,
+        description: document.getElementById('description').value,
+        price: parseFloat(document.getElementById('price').value) || 0,
+        capacity: parseInt(document.getElementById('capacity').value) || 0
+    };
 
-        if (isServerOnline) {
-            const url = pId ? `${API}/participants/${pId}` : `${API}/participants/`;
-            const method = pId ? 'PUT' : 'POST';
-            await fetch(url, {
-                method: method,
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(participantData)
-            });
-            alert(pId ? "اطلاعات مسافر بروزرسانی شد!" : "مسافر ثبت شد!");
-            resetParticipantForm();
-            syncData();
+    const method = tripId ? 'PUT' : 'POST';
+    const url = tripId ? `/trips/${tripId}` : '/trips';
+
+    try {
+        const response = await fetch(url, {
+            method: method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(tripData)
+        });
+
+        if (response.ok) {
+            alert(tripId ? "تور بروزرسانی شد!" : "تور ثبت شد!");
+            resetTripForm();
+            location.reload(); // به‌جای syncData برای رفرش دیتای جدید
         } else {
-            alert("برای ویرایش/ثبت مستقیم به اتصال آنلاین نیاز است.");
+            alert("خطا در ثبت اطلاعات تور.");
         }
+    } catch (err) {
+        alert("برای ویرایش/ثبت مستقیم به اتصال آنلاین نیاز است.");
     }
+}
 
     function editTrip(id, title, dest, date, price) {
         document.getElementById('t_id').value = id;
@@ -468,17 +473,20 @@
     }
 
     async function deleteParticipant(id) {
-        if (confirm("آیا از حذف این مسافر اطمینان دارید؟")) {
-            if (isServerOnline) {
-                await fetch(`${API}/participants/${id}`, { method: 'DELETE' });
-                alert("مسافر حذف شد!");
-                syncData();
+    if (confirm("آیا از حذف این مسافر اطمینان دارید؟")) {
+        try {
+            const res = await fetch(`/participants/${id}`, { method: 'DELETE' });
+            if (res.ok) {
+                alert("مسافر با موفقیت حذف شد.");
+                location.reload();
             } else {
-                alert("برای حذف باید به سرور متصل باشید.");
+                alert("خطا در حذف مسافر.");
             }
+        } catch (err) {
+            alert("برای حذف باید به سرور متصل باشید.");
         }
     }
-
+}
     function resetTripForm() {
         document.getElementById('tripForm').reset();
         document.getElementById('t_id').value = '';
