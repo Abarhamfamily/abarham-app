@@ -612,23 +612,46 @@
 
     <!-- اسکریپت جدید برای Service Worker و دریافت داده‌ها -->
     <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js')
-            .then(reg => console.log('Service Worker فعال شد:', reg.scope))
-            .catch(err => console.log('خطا در Service Worker:', err));
-        });
-      }
-
-      async function fetchTrips() {
+    // تابع اصلی بررسی وضعیت اتصال به سرور
+    async function checkServerStatus() {
+        const badge = document.getElementById('connectionStatus');
         try {
-          const response = await fetch('/trips');
-          const data = await response.json();
-          console.log('لیست سفرها:', data);
-        } catch (error) {
-          console.error('خطا در دریافت اطلاعات:', error);
+            const res = await fetch('/trips', { cache: 'no-store' });
+            if (res.ok) {
+                window.isServerOnline = true;
+                if (badge) {
+                    badge.textContent = 'آنلاین (متصل به سرور)';
+                    badge.style.backgroundColor = '#2e7d32';
+                    badge.style.color = '#ffffff';
+                }
+            } else {
+                throw new Error('Response error');
+            }
+        } catch (err) {
+            window.isServerOnline = false;
+            if (badge) {
+                badge.textContent = 'حالت آفلاین (ذخیره محلی)';
+                badge.style.backgroundColor = '#c62828';
+                badge.style.color = '#ffffff';
+            }
         }
-      }
+    }
+
+    // اجرا پس از لود کامل صفحه
+    window.addEventListener('DOMContentLoaded', () => {
+        checkServerStatus();
+        setInterval(checkServerStatus, 5000);
+    });
+
+    // ثبت سرویس ورکر
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/sw.js')
+                .then(reg => console.log('Service Worker فعال شد:', reg.scope))
+                .catch(err => console.log('خطا در Service Worker:', err));
+        });
+    }
+</script>
 
       fetchTrips();
     </script>
