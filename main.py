@@ -45,6 +45,17 @@ def get_manifest():
     if os.path.exists("manifest.json"):
         return FileResponse("manifest.json")
     return {}
+@app.get("/logo.png")
+def get_logo():
+    if os.path.exists("logo.png"):
+        return FileResponse("logo.png", media_type="image/png")
+    return {}
+
+@app.get("/sw.js")
+def get_sw():
+    if os.path.exists("sw.js"):
+        return FileResponse("sw.js", media_type="application/javascript")
+    return {}
 
 @app.get("/", response_class=HTMLResponse)
 def read_root():
