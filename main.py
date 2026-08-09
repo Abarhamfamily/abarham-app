@@ -1,24 +1,29 @@
 import os
+import asyncio
 from contextlib import asynccontextmanager
 from typing import Optional, List
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse, FileResponse, Response
 from sqlmodel import Field, SQLModel, create_engine, Session, select
 
-class Trip(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
-    title: str
-    destination: Optional[str] = None
-    date: Optional[str] = None
-    price: Optional[str] = None
-    description: Optional[str] = None
+# وارد کردن مدل‌ها و دیتابیس از models.py
+from models import engine, SQLModel, Trip, Participant
+from bot import start_bot
 
-class Participant(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
-    full_name: str
-    national_id: str
-    phone_number: str
-    trip_id: Optional[int] = Field(default=None, foreign_key="trip.id")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # ساخت جدول‌های دیتابیس
+    SQLModel.metadata.create_all(engine)
+    
+    # اجرای ربات در پس‌زمینه
+    bot_task = asyncio.create_task(start_bot())
+    print("🤖 وب‌سرور و ربات تلگرام فعال شدند.")
+    yield
+    bot_task.cancel()
+
+app = FastAPI(lifespan=lifespan)
+
+# ... مابقی اندپوئینت‌های FastAPI شما ...
 
 sqlite_file_name = "quick_abarham.db"
 sqlite_url = f"sqlite:///{sqlite_file_name}"
@@ -97,7 +102,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 # نام فایل یا تابع اصلی ربات خود را فراخوانی کنید
 # فرض بر این است که داخل bot.py یک تابع اصلی به اسم run_bot یا main دارید
-from bot import main as start_telegram_bot 
+from bot import start_bot
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
