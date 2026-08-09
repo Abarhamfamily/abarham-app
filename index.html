@@ -343,20 +343,31 @@
         loadLocalData();
     };
 
-    async function checkServerStatus() {
-        const badge = document.getElementById('connectionStatus');
-        try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 2000);
-            const res = await fetch(`${API}/trips/`, { method: 'GET', signal: controller.signal });
-            clearTimeout(timeoutId);
-
-            if (res.ok) {
-                isServerOnline = true;
-                if (badge) {
-                    badge.className = "status-badge status-online";
-                    badge.innerText = "متصل به سرور (آنلاین)";
-                }
+  async function checkServerStatus() {
+    const badge = document.getElementById('connectionStatus');
+    try {
+        const res = await fetch('/trips');
+        if (res.ok) {
+            isServerOnline = true;
+            if (badge) {
+                badge.textContent = 'آنلاین (متصل به سرور)';
+                badge.className = 'status-badge status-online';
+                badge.style.backgroundColor = '#2e7d32';
+                badge.style.color = '#fff';
+            }
+        } else {
+            throw new Error('Server response not ok');
+        }
+    } catch (err) {
+        isServerOnline = false;
+        if (badge) {
+            badge.textContent = 'حالت آفلاین (ذخیره محلی)';
+            badge.className = 'status-badge status-offline';
+            badge.style.backgroundColor = '#c62828';
+            badge.style.color = '#fff';
+        }
+    }
+}
             } else { throw new Error("Server error"); }
         } catch (err) {
             isServerOnline = false;
