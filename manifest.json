@@ -1,7 +1,7 @@
 {
-  "name": "سامانه مدیریت تور ابرهام",
-  "short_name": "ابرهام",
-  "description": "سامانه مدیریت تورها و مسافران گروه گردشگری ابرهام",
+  "name": "سامانه مدیریت تور ابرهام"
+  "short_name": "ابرهام"
+  "description": "سامانه مدیریت تورها و مسافران گروه گردشگری ابرهام"
   "start_url": "/",
   "display": "standalone",
   "background_color": "#f3f4f6",
@@ -10,12 +10,12 @@
   "lang": "fa-IR",
   "icons": [
     {
-      "src": "/logo.png",
+      "src": "logo.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "/logo.png",
+      "src": "/logo.png"
       "sizes": "512x512",
       "type": "image/png"
     }
