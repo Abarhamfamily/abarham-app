@@ -569,30 +569,30 @@
     }
 
     async function syncData() {
-        if (!isServerOnline) return;
+    if (!isServerOnline) return;
 
-        try {
-            const serverTripsRes = await fetch(`${API}/trips/`);
-            const serverTrips = await serverTripsRes.json();
+    try {
+        const serverTripsRes = await fetch(`${API}/trips`);
+        const serverTrips = await serverTripsRes.json();
 
-            const serverPartsRes = await fetch(`${API}/participants/`);
-            const serverParts = await serverPartsRes.json();
+        const serverPartsRes = await fetch(`${API}/participants`);
+        const serverParts = await serverPartsRes.json();
 
-            const txTrips = db.transaction("trips", "readwrite");
-            const tripsStore = txTrips.objectStore("trips");
-            tripsStore.clear();
-            for (let st of serverTrips) tripsStore.put(st);
+        const txTrips = db.transaction("trips", "readwrite");
+        const tripsStore = txTrips.objectStore("trips");
+        tripsStore.clear();
+        for (let st of serverTrips) tripsStore.put(st);
 
-            const txParts = db.transaction("participants", "readwrite");
-            const partsStore = txParts.objectStore("participants");
-            partsStore.clear();
-            for (let sp of serverParts) partsStore.put(sp);
+        const txParts = db.transaction("participants", "readwrite");
+        const partsStore = txParts.objectStore("participants");
+        partsStore.clear();
+        for (let sp of serverParts) partsStore.put(sp);
 
-            loadLocalData();
-        } catch (err) {
-            console.error("خطا در همگام‌سازی: ", err);
-        }
+        loadDataFromIDB();
+    } catch (err) {
+        console.error("خطا در همگام‌سازی داده‌ها:", err);
     }
+}
 </script>
 }
     </script>
