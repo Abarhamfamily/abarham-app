@@ -1,3 +1,4 @@
+import os
 import logging
 from telegram import Update, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
 from telegram.ext import (
@@ -5,8 +6,6 @@ from telegram.ext import (
     MessageHandler, ConversationHandler, filters
 )
 from sqlmodel import Session, select
-
-# وارد کردن دیتابیس و مدل‌ها از main
 from main import engine, Participant, Trip
 
 TRIP_SELECT, NAME, NATIONAL_ID, PHONE = range(4)
@@ -20,7 +19,6 @@ async def start_registration(update: Update, context: ContextTypes.DEFAULT_TYPE)
             return ConversationHandler.END
         
         context.user_data['trips_map'] = {f"{t.title} (کد {t.id})": t.id for t in trips}
-        
         keyboard = [[button] for button in context.user_data['trips_map'].keys()]
         reply_markup = ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True)
         
@@ -49,7 +47,6 @@ async def select_trip(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def get_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
     full_name = update.message.text.strip()
-    
     if len(full_name) < 3:
         await update.message.reply_text("لطفاً نام و نام خانوادگی معتبر وارد کنید:")
         return NAME
@@ -60,13 +57,11 @@ async def get_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def get_national_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
     national_id = update.message.text.strip()
-    
     if not national_id.isdigit() or len(national_id) != 10:
         await update.message.reply_text("کد ملی باید یک عدد ۱۰ رقمی باشد. لطفاً دوباره وارد کنید:")
         return NATIONAL_ID
         
     context.user_data['national_id'] = national_id
-    
     phone_keyboard = [[KeyboardButton("📱 ارسال شماره تماس من", request_contact=True)]]
     reply_markup = ReplyKeyboardMarkup(phone_keyboard, one_time_keyboard=True, resize_keyboard=True)
     
@@ -77,11 +72,7 @@ async def get_national_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return PHONE
 
 async def get_phone_and_save(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.message.contact:
-        phone_number = update.message.contact.phone_number
-    else:
-        phone_number = update.message.text.strip()
-        
+    phone_number = update.message.contact.phone_number if update.message.contact else update.message.text.strip()
     context.user_data['phone_number'] = phone_number
     
     try:
@@ -115,8 +106,9 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("فرآیند ثبت‌نام لغو شد.", reply_markup=ReplyKeyboardRemove())
     return ConversationHandler.END
 
-if __name__ == '__main__':
-    app = ApplicationBuilder().token("8595655776:AAFlEH8DOxM8pZXdZaoPXjMwPzsYneY7_R8").build()
+def build_bot_app():
+    token = os.getenv("BOT_TOKEN", "8595655776:AAFlEH8DOxM8pZXdZaoPXjMwPzsYneY7_R8")
+    app = ApplicationBuilder().token(token).build()
 
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler('start', start_registration), CommandHandler('register', start_registration)],
@@ -133,5 +125,11 @@ if __name__ == '__main__':
     )
 
     app.add_handler(conv_handler)
-    print("🤖 ربات با موفقیت روشن شد و آماده دریافت اطلاعات است...")
-    app.run_polling()
+    return app
+
+# تابع اجرای همزمان با FastAPI
+async def start_bot():
+    telegram_app = build_bot_app()
+    await telegram_app.initialize()
+    await telegram_app.start()
+    await telegram_app.updater.start_polling()

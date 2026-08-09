@@ -92,3 +92,38 @@ def create_participant(participant: Participant):
         session.commit()
         session.refresh(participant)
         return participant
+    import asyncio
+from contextlib import asynccontextmanager
+from fastapi import FastAPI
+# نام فایل یا تابع اصلی ربات خود را فراخوانی کنید
+# فرض بر این است که داخل bot.py یک تابع اصلی به اسم run_bot یا main دارید
+from bot import main as start_telegram_bot 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # هنگام روشن شدن سرور، ربات هم در پس‌زمینه اجرا می‌شود
+    bot_task = asyncio.create_task(start_telegram_bot())
+    yield
+    # هنگام خاموش شدن سرور، اجرای ربات متوقف می‌شود
+    bot_task.cancel()
+
+app = FastAPI(lifespan=lifespan)
+
+# ... مابقی کدهای قبلی main.py شما
+import asyncio
+from contextlib import asynccontextmanager
+from fastapi import FastAPI
+from bot import start_bot
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # شروع ربات تلگرام در پس‌زمینه
+    bot_task = asyncio.create_task(start_bot())
+    print("🤖 ربات تلگرام در پس‌زمینه FastAPI فعال شد.")
+    yield
+    # هنگام خاموش شدن سرور
+    bot_task.cancel()
+
+app = FastAPI(lifespan=lifespan)
+
+# ... مابقی کدهای قبلی main.py ...
