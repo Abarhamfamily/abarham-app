@@ -34,7 +34,16 @@ class Participant(SQLModel, table=True):
 # تنظیمات دیتابیس (یک منبع واحد؛ همه‌ی فایل‌ها این engine را ایمپورت می‌کنند)
 # ---------------------------------------------------------------------------
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./abarham.db")
-engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+
+# Render مقدار DATABASE_URL رو با پیشوند "postgres://" می‌ده، ولی SQLAlchemy 1.4+
+# پیشوند "postgresql://" رو می‌خواد. این خط این ناسازگاری رو خودکار درست می‌کند.
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
+# آرگومان check_same_thread فقط برای SQLite لازم است؛ برای PostgreSQL نباید پاس داده شود.
+connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
+
+engine = create_engine(DATABASE_URL, connect_args=connect_args)
 
 
 def create_db_and_tables() -> None:
