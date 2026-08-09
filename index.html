@@ -4,20 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>مدیریت سفرها | گروه گردشگری ابرهام</title>
-    
+
     <!-- PWA Meta Tags & Manifest -->
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#00a693">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="ابرهم">
-<link rel="apple-touch-icon" href="logo.png">
-<link rel="icon" type="image/png" href="logo.png">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#00a693">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="ابرهم">
+    <link rel="apple-touch-icon" href="logo.png">
+    <link rel="icon" type="image/png" href="logo.png">
 
     <link href="https://cdn.jsdelivr.net/npm/vazirmatn@33.0.3/Vazirmatn-font-face.css" rel="stylesheet" type="text/css" />
     <style>
         :root {
-            --primary: #00a693; /* سبز پرشین */
+            --primary: #00a693;
             --primary-hover: #008f7e;
             --bg-color: #f3f4f6;
             --card-bg: #ffffff;
@@ -33,21 +33,10 @@
             padding: 15px;
         }
 
-        .container {
-            max-width: 950px;
-            margin: 0 auto;
-        }
+        .container { max-width: 950px; margin: 0 auto; }
 
-        header {
-            text-align: center;
-            margin-bottom: 20px;
-        }
-
-        header h1 {
-            color: #00796b;
-            margin-bottom: 5px;
-            font-size: 1.5rem;
-        }
+        header { text-align: center; margin-bottom: 20px; }
+        header h1 { color: #00796b; margin-bottom: 5px; font-size: 1.5rem; }
 
         .sync-bar {
             display: flex;
@@ -67,9 +56,6 @@
             font-size: 0.85rem;
             font-weight: bold;
         }
-
-        .status-online { background-color: #e0f2f1; color: #004d40; }
-        .status-offline { background-color: #fee2e2; color: #991b1b; }
 
         .btn-sync {
             background-color: #2563eb;
@@ -137,17 +123,24 @@
             transition: background 0.2s;
         }
 
-        .btn:hover {
-            background-color: var(--primary-hover);
+        .btn:hover { background-color: var(--primary-hover); }
+
+        .btn-cancel-edit {
+            width: 100%;
+            background: none;
+            border: 1px solid var(--border-color);
+            color: #6b7280;
+            padding: 8px;
+            border-radius: 6px;
+            margin-top: 8px;
+            cursor: pointer;
+            font-family: 'Vazirmatn', sans-serif;
+            display: none;
         }
 
         .table-responsive { overflow-x: auto; }
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 10px;
-        }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
 
         th, td {
             padding: 8px 10px;
@@ -159,13 +152,7 @@
 
         th { background-color: #f9fafb; }
 
-        .badge {
-            padding: 3px 8px;
-            border-radius: 10px;
-            font-size: 0.75rem;
-            font-weight: bold;
-        }
-
+        .badge { padding: 3px 8px; border-radius: 10px; font-size: 0.75rem; font-weight: bold; }
         .badge-deposit { background-color: #fef3c7; color: #92400e; }
         .badge-full { background-color: #e0f2f1; color: #004d40; }
 
@@ -195,7 +182,7 @@
 
     <div class="sync-bar">
         <div>
-            وضعیت شبکه: 
+            وضعیت شبکه:
             <span id="connectionStatus" class="status-badge status-offline">در حال بررسی...</span>
         </div>
         <button class="btn-sync" onclick="syncData()">همگام‌سازی داده‌ها 🔄</button>
@@ -223,7 +210,12 @@
                     <label>قیمت تور (تومان)</label>
                     <input type="number" id="t_price" required>
                 </div>
+                <div class="form-group">
+                    <label>ظرفیت (۰ = نامحدود)</label>
+                    <input type="number" id="t_capacity" value="0" min="0">
+                </div>
                 <button type="submit" class="btn" id="t_btn">ثبت تور</button>
+                <button type="button" class="btn-cancel-edit" id="t_cancel_btn" onclick="resetTripForm()">لغو ویرایش</button>
             </form>
         </div>
 
@@ -262,6 +254,7 @@
                     <input type="number" id="p_paid" required>
                 </div>
                 <button type="submit" class="btn" id="p_btn">ثبت مسافر</button>
+                <button type="button" class="btn-cancel-edit" id="p_cancel_btn" onclick="resetParticipantForm()">لغو ویرایش</button>
             </form>
         </div>
     </div>
@@ -277,6 +270,7 @@
                         <th>مقصد</th>
                         <th>تاریخ</th>
                         <th>قیمت تور</th>
+                        <th>ظرفیت</th>
                         <th>تعداد مسافر</th>
                         <th>جمع کل دریافتی</th>
                         <th>عملیات</th>
@@ -313,242 +307,380 @@
 </div>
 
 <script>
+    let db;
+    let isServerOnline = true;
+    let allTrips = [];
+    let allParticipants = [];
 
-     const API = "";
-        let db;
-        let isServerOnline = true;
+    // ۱. راه اندازی IndexedDB
+    const request = indexedDB.open("AbarhamSyncDB", 2);
 
-        // ۱. راه اندازی IndexedDB
-        const request = indexedDB.open("AbarhamSyncDB", 2);
+    request.onupgradeneeded = (e) => {
+        db = e.target.result;
+        if (!db.objectStoreNames.contains("trips")) db.createObjectStore("trips", { keyPath: "id" });
+        if (!db.objectStoreNames.contains("participants")) db.createObjectStore("participants", { keyPath: "id" });
+    };
 
-        request.onupgradeneeded = (e) => {
-            db = e.target.result;
-            if (!db.objectStoreNames.contains("trips")) db.createObjectStore("trips", { keyPath: "id", autoIncrement: true });
-            if (!db.objectStoreNames.contains("participants")) db.createObjectStore("participants", { keyPath: "id", autoIncrement: true });
-        };
+    request.onsuccess = (e) => {
+        db = e.target.result;
+        checkServerStatus().then(syncData);
+        setInterval(checkServerStatus, 5000);
+    };
 
-        request.onsuccess = (e) => {
-            db = e.target.result;
-            checkServerStatus();
-            setInterval(checkServerStatus, 5000);
-            syncData();
-        };
+    request.onerror = () => {
+        console.error("خطا در راه‌اندازی IndexedDB");
+        checkServerStatus().then(syncData);
+    };
 
-        // ۲. بررسی وضعیت اتصال
-        async function checkServerStatus() {
-            const badge = document.getElementById('connectionStatus');
-            try {
-                const res = await fetch('/trips', { cache: 'no-store' });
-                if (res.ok) {
-                    isServerOnline = true;
-                    if (badge) {
-                        badge.textContent = 'آنلاین (متصل به سرور)';
-                        badge.style.backgroundColor = '#2e7d32';
-                        badge.style.color = '#ffffff';
-                    }
-                } else {
-                    throw new Error('Server error');
-                }
-            } catch (err) {
-                isServerOnline = false;
+    // ۲. بررسی وضعیت اتصال
+    async function checkServerStatus() {
+        const badge = document.getElementById('connectionStatus');
+        try {
+            const res = await fetch('/trips', { cache: 'no-store' });
+            if (res.ok) {
+                isServerOnline = true;
                 if (badge) {
-                    badge.textContent = 'حالت آفلاین (ذخیره محلی)';
-                    badge.style.backgroundColor = '#c62828';
+                    badge.textContent = 'آنلاین (متصل به سرور)';
+                    badge.style.backgroundColor = '#2e7d32';
                     badge.style.color = '#ffffff';
                 }
+            } else {
+                throw new Error('Server error');
+            }
+        } catch (err) {
+            isServerOnline = false;
+            if (badge) {
+                badge.textContent = 'حالت آفلاین (ذخیره محلی)';
+                badge.style.backgroundColor = '#c62828';
+                badge.style.color = '#ffffff';
             }
         }
+    }
 
-        // ۳. ثبت و ویرایش تور (یکپارچه)
-        async function handleTripSubmit(e) {
-            e.preventDefault();
-            
-            const tripId = document.getElementById('t_id')?.value || document.getElementById('trip_id')?.value;
-            const tripData = {
-                title: document.getElementById('t_title')?.value || document.getElementById('title')?.value,
-                destination: document.getElementById('t_dest')?.value || "",
-                date: document.getElementById('t_date')?.value || "",
-                price: parseFloat(document.getElementById('t_price')?.value || document.getElementById('price')?.value) || 0,
-                capacity: parseInt(document.getElementById('capacity')?.value) || 0
+    // ۳. ثبت و ویرایش تور (یکپارچه)
+    async function handleTripSubmit(e) {
+        e.preventDefault();
+
+        if (!isServerOnline) {
+            alert("برای ثبت یا ویرایش اطلاعات باید به اینترنت متصل باشید.");
+            return;
+        }
+
+        const tripId = document.getElementById('t_id').value;
+        const tripData = {
+            title: document.getElementById('t_title').value,
+            destination: document.getElementById('t_dest').value,
+            date: document.getElementById('t_date').value,
+            price: parseFloat(document.getElementById('t_price').value) || 0,
+            capacity: parseInt(document.getElementById('t_capacity').value) || 0
+        };
+
+        const method = tripId ? 'PUT' : 'POST';
+        const url = tripId ? `/trips/${tripId}` : '/trips';
+
+        try {
+            const res = await fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(tripData)
+            });
+
+            if (res.ok) {
+                alert(tripId ? "تور بروزرسانی شد!" : "تور جدید با موفقیت ثبت شد!");
+                resetTripForm();
+                syncData();
+            } else {
+                const errData = await res.json();
+                alert("خطا در ثبت تور: " + JSON.stringify(errData));
+            }
+        } catch (err) {
+            alert("خطا در ارتباط با سرور.");
+        }
+    }
+
+    // ۴. ثبت و ویرایش مسافر (یکپارچه)
+    async function handleParticipantSubmit(e) {
+        e.preventDefault();
+
+        if (!isServerOnline) {
+            alert("برای ثبت یا ویرایش اطلاعات باید به اینترنت متصل باشید.");
+            return;
+        }
+
+        const tripId = document.getElementById('p_trip_id').value;
+        if (!tripId) {
+            alert("لطفاً ابتدا یک تور انتخاب کنید.");
+            return;
+        }
+
+        const participantId = document.getElementById('p_id').value;
+        const participantData = {
+            full_name: document.getElementById('p_name').value,
+            national_id: document.getElementById('p_national_id').value,
+            phone_number: document.getElementById('p_phone').value,
+            trip_id: parseInt(tripId),
+            payment_status: document.getElementById('p_status').value,
+            paid_amount: parseFloat(document.getElementById('p_paid').value) || 0
+        };
+
+        const method = participantId ? 'PUT' : 'POST';
+        const url = participantId ? `/participants/${participantId}` : '/participants';
+
+        try {
+            const res = await fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(participantData)
+            });
+
+            if (res.ok) {
+                alert(participantId ? "اطلاعات مسافر بروزرسانی شد!" : "مسافر جدید با موفقیت ثبت شد!");
+                resetParticipantForm();
+                syncData();
+            } else {
+                const errData = await res.json();
+                alert("خطا در ثبت مسافر: " + JSON.stringify(errData));
+            }
+        } catch (err) {
+            alert("خطا در ارتباط با سرور.");
+        }
+    }
+
+    // ۵. حذف تور
+    async function deleteTrip(id) {
+        if (!confirm("آیا از حذف این تور و تمام مسافران آن اطمینان دارید؟")) return;
+        if (!isServerOnline) {
+            alert("برای حذف باید به سرور متصل باشید.");
+            return;
+        }
+        try {
+            const res = await fetch(`/trips/${id}`, { method: 'DELETE' });
+            if (res.ok) {
+                alert("تور حذف شد!");
+                syncData();
+            } else {
+                alert("خطا در حذف تور.");
+            }
+        } catch (err) {
+            alert("خطا در ارتباط با سرور.");
+        }
+    }
+
+    // ۶. حذف مسافر
+    async function deleteParticipant(id) {
+        if (!confirm("آیا از حذف این مسافر اطمینان دارید؟")) return;
+        if (!isServerOnline) {
+            alert("برای حذف باید به سرور متصل باشید.");
+            return;
+        }
+        try {
+            const res = await fetch(`/participants/${id}`, { method: 'DELETE' });
+            if (res.ok) {
+                alert("مسافر با موفقیت حذف شد.");
+                syncData();
+            } else {
+                alert("خطا در حذف مسافر.");
+            }
+        } catch (err) {
+            alert("خطا در ارتباط با سرور.");
+        }
+    }
+
+    // ۷. ویرایش تور — پر کردن فرم با داده‌های موجود
+    function editTrip(id) {
+        const trip = allTrips.find(t => t.id === id);
+        if (!trip) return;
+
+        document.getElementById('t_id').value = trip.id;
+        document.getElementById('t_title').value = trip.title || '';
+        document.getElementById('t_dest').value = trip.destination || '';
+        document.getElementById('t_date').value = trip.date || '';
+        document.getElementById('t_price').value = trip.price || 0;
+        document.getElementById('t_capacity').value = trip.capacity || 0;
+
+        document.getElementById('tripFormTitle').textContent = '۱. ویرایش تور';
+        document.getElementById('t_btn').textContent = 'ذخیره تغییرات';
+        document.getElementById('t_cancel_btn').style.display = 'block';
+
+        document.getElementById('tripForm').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    // ۸. ویرایش مسافر — پر کردن فرم با داده‌های موجود
+    function editParticipant(id) {
+        const p = allParticipants.find(p => p.id === id);
+        if (!p) return;
+
+        document.getElementById('p_id').value = p.id;
+        document.getElementById('p_trip_id').value = p.trip_id;
+        document.getElementById('p_name').value = p.full_name || '';
+        document.getElementById('p_national_id').value = p.national_id || '';
+        document.getElementById('p_phone').value = p.phone_number || '';
+        document.getElementById('p_status').value = p.payment_status || 'پرداخت بیعانه';
+        document.getElementById('p_paid').value = p.paid_amount || 0;
+
+        document.getElementById('participantFormTitle').textContent = '۲. ویرایش مسافر';
+        document.getElementById('p_btn').textContent = 'ذخیره تغییرات';
+        document.getElementById('p_cancel_btn').style.display = 'block';
+
+        document.getElementById('participantForm').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function resetTripForm() {
+        document.getElementById('tripForm').reset();
+        document.getElementById('t_id').value = '';
+        document.getElementById('t_capacity').value = 0;
+        document.getElementById('tripFormTitle').textContent = '۱. ثبت تور جدید';
+        document.getElementById('t_btn').textContent = 'ثبت تور';
+        document.getElementById('t_cancel_btn').style.display = 'none';
+    }
+
+    function resetParticipantForm() {
+        document.getElementById('participantForm').reset();
+        document.getElementById('p_id').value = '';
+        document.getElementById('participantFormTitle').textContent = '۲. ثبت‌نام مسافر جدید';
+        document.getElementById('p_btn').textContent = 'ثبت مسافر';
+        document.getElementById('p_cancel_btn').style.display = 'none';
+    }
+
+    // ۹. دریافت داده‌ها از سرور و نمایش روی جدول
+    async function syncData() {
+        if (!isServerOnline) {
+            loadLocalData();
+            return;
+        }
+
+        try {
+            const tripsRes = await fetch('/trips');
+            const trips = await tripsRes.json();
+
+            const partsRes = await fetch('/participants');
+            const participants = await partsRes.json();
+
+            allTrips = trips;
+            allParticipants = participants;
+
+            if (db) {
+                const txTrips = db.transaction("trips", "readwrite");
+                txTrips.objectStore("trips").clear();
+                trips.forEach(t => txTrips.objectStore("trips").put(t));
+
+                const txParts = db.transaction("participants", "readwrite");
+                txParts.objectStore("participants").clear();
+                participants.forEach(p => txParts.objectStore("participants").put(p));
+            }
+
+            renderTrips();
+            renderParticipants();
+        } catch (err) {
+            console.error("خطا در دریافت داده‌ها:", err);
+            loadLocalData();
+        }
+    }
+
+    function loadLocalData() {
+        if (!db) return;
+        const txTrips = db.transaction("trips", "readonly");
+        txTrips.objectStore("trips").getAll().onsuccess = (e) => {
+            allTrips = e.target.result;
+            const txParts = db.transaction("participants", "readonly");
+            txParts.objectStore("participants").getAll().onsuccess = (e2) => {
+                allParticipants = e2.target.result;
+                renderTrips();
+                renderParticipants();
             };
+        };
+    }
 
-            if (!isServerOnline) {
-                alert("برای ثبت یا ویرایش اطلاعات باید به اینترنت متصل باشید.");
-                return;
+    function renderTrips() {
+        const tripsTable = document.getElementById('tripsTable');
+        const tripSelect = document.getElementById('p_trip_id');
+        if (!tripsTable) return;
+
+        const currentSelection = tripSelect ? tripSelect.value : '';
+
+        tripsTable.innerHTML = '';
+        if (tripSelect) tripSelect.innerHTML = '<option value="">-- انتخاب تور --</option>';
+
+        allTrips.forEach(t => {
+            const filteredParts = allParticipants.filter(p => p.trip_id === t.id);
+            const totalCollected = filteredParts.reduce((sum, p) => sum + (p.paid_amount || 0), 0);
+            const capacityText = t.capacity ? `${filteredParts.length} / ${t.capacity}` : `${filteredParts.length} (نامحدود)`;
+
+            tripsTable.innerHTML += `
+                <tr>
+                    <td><strong>${t.title}</strong></td>
+                    <td>${t.destination || '-'}</td>
+                    <td>${t.date || '-'}</td>
+                    <td>${(t.price || 0).toLocaleString()} تومان</td>
+                    <td>${capacityText}</td>
+                    <td>${filteredParts.length} نفر</td>
+                    <td style="color: #00796b; font-weight: bold;">${totalCollected.toLocaleString()} تومان</td>
+                    <td>
+                        <button class="btn-action btn-edit" onclick="editTrip(${t.id})">ویرایش</button>
+                        <button class="btn-action btn-delete" onclick="deleteTrip(${t.id})">حذف</button>
+                    </td>
+                </tr>
+            `;
+
+            if (tripSelect) {
+                const opt = document.createElement('option');
+                opt.value = t.id;
+                opt.innerText = t.title;
+                tripSelect.appendChild(opt);
             }
+        });
 
-            const method = tripId ? 'PUT' : 'POST';
-            const url = tripId ? `/trips/${tripId}` : '/trips';
+        if (tripSelect && currentSelection) tripSelect.value = currentSelection;
+    }
 
-            try {
-                const res = await fetch(url, {
-                    method: method,
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(tripData)
-                });
+    function renderParticipants() {
+        const table = document.getElementById('participantsTable');
+        if (!table) return;
 
-                if (res.ok) {
-                    alert(tripId ? "تور بروزرسانی شد!" : "تور جدید با موفقیت ثبت شد!");
-                    resetTripForm();
-                    syncData();
-                } else {
-                    const errData = await res.json();
-                    alert("خطا در ثبت تور: " + JSON.stringify(errData));
-                }
-            } catch (err) {
-                alert("خطا در ارتباط با سرور.");
-            }
-        }
+        const searchInput = document.getElementById('searchInput');
+        const query = searchInput ? searchInput.value.trim().toLowerCase() : '';
 
-        // ۴. حذف تور
-        async function deleteTrip(id) {
-            if (confirm("آیا از حذف این تور و تمام مسافران آن اطمینان دارید؟")) {
-                if (isServerOnline) {
-                    await fetch(`/trips/${id}`, { method: 'DELETE' });
-                    alert("تور حذف شد!");
-                    syncData();
-                } else {
-                    alert("برای حذف باید به سرور متصل باشید.");
-                }
-            }
-        }
+        table.innerHTML = '';
 
-        // ۵. حذف مسافر
-        async function deleteParticipant(id) {
-            if (confirm("آیا از حذف این مسافر اطمینان دارید؟")) {
-                try {
-                    const res = await fetch(`/participants/${id}`, { method: 'DELETE' });
-                    if (res.ok) {
-                        alert("مسافر با موفقیت حذف شد.");
-                        syncData();
-                    } else {
-                        alert("خطا در حذف مسافر.");
-                    }
-                } catch (err) {
-                    alert("برای حذف باید به سرور متصل باشید.");
-                }
-            }
-        }
+        const filtered = allParticipants.filter(p => {
+            if (!query) return true;
+            return (
+                (p.full_name || '').toLowerCase().includes(query) ||
+                (p.national_id || '').toLowerCase().includes(query) ||
+                (p.phone_number || '').toLowerCase().includes(query)
+            );
+        });
 
-        // ۶. دریافت داده‌ها از سرور و نمایش روی جدول
-        async function syncData() {
-            if (!isServerOnline) {
-                loadLocalData();
-                return;
-            }
+        filtered.forEach(p => {
+            const trip = allTrips.find(t => t.id === p.trip_id);
+            const tripTitle = trip ? trip.title : 'نامشخص';
+            const badgeClass = p.payment_status === 'پرداخت کامل' ? 'badge-full' : 'badge-deposit';
 
-            try {
-                const tripsRes = await fetch('/trips');
-                const trips = await tripsRes.json();
+            table.innerHTML += `
+                <tr>
+                    <td><strong>${p.full_name}</strong></td>
+                    <td>${p.national_id}</td>
+                    <td>${p.phone_number || '-'}</td>
+                    <td>${tripTitle}</td>
+                    <td><span class="badge ${badgeClass}">${p.payment_status || '-'}</span></td>
+                    <td>${(p.paid_amount || 0).toLocaleString()} تومان</td>
+                    <td>
+                        <button class="btn-action btn-edit" onclick="editParticipant(${p.id})">ویرایش</button>
+                        <button class="btn-action btn-delete" onclick="deleteParticipant(${p.id})">حذف</button>
+                    </td>
+                </tr>
+            `;
+        });
+    }
 
-                const partsRes = await fetch('/participants');
-                const participants = await partsRes.json();
-
-                // ذخیره در IndexedDB
-                if (db) {
-                    const txTrips = db.transaction("trips", "readwrite");
-                    txTrips.objectStore("trips").clear();
-                    trips.forEach(t => txTrips.objectStore("trips").put(t));
-
-                    const txParts = db.transaction("participants", "readwrite");
-                    txParts.objectStore("participants").clear();
-                    participants.forEach(p => txParts.objectStore("participants").put(p));
-                }
-
-                renderTrips(trips, participants);
-                renderParticipants(participants, trips);
-            } catch (err) {
-                console.error("خطا در دریافت داده‌ها:", err);
-            }
-        }
-
-        function loadLocalData() {
-            if (!db) return;
-            const txTrips = db.transaction("trips", "readonly");
-            txTrips.objectStore("trips").getAll().onsuccess = (e) => {
-                const trips = e.target.result;
-                const txParts = db.transaction("participants", "readonly");
-                txParts.objectStore("participants").getAll().onsuccess = (e2) => {
-                    const participants = e2.target.result;
-                    renderTrips(trips, participants);
-                    renderParticipants(participants, trips);
-                };
-            };
-        }
-
-        function renderTrips(trips, participants) {
-            const tripsTable = document.getElementById('tripsTable');
-            const tripSelect = document.getElementById('p_trip_id');
-            if (!tripsTable) return;
-
-            tripsTable.innerHTML = '';
-            if (tripSelect) tripSelect.innerHTML = '<option value="">-- انتخاب تور --</option>';
-
-            trips.forEach(t => {
-                const filteredParts = participants.filter(p => p.trip_id === t.id);
-                const totalCollected = filteredParts.reduce((sum, p) => sum + (p.paid_amount || 0), 0);
-
-                tripsTable.innerHTML += `
-                    <tr>
-                        <td><strong>${t.title}</strong></td>
-                        <td>${t.destination || '-'}</td>
-                        <td>${t.date || '-'}</td>
-                        <td>${(t.price || 0).toLocaleString()} تومان</td>
-                        <td>${filteredParts.length} نفر</td>
-                        <td style="color: #00796b; font-weight: bold;">${totalCollected.toLocaleString()} تومان</td>
-                        <td>
-                            <button class="btn-action btn-delete" onclick="deleteTrip(${t.id})">حذف</button>
-                        </td>
-                    </tr>
-                `;
-
-                if (tripSelect) {
-                    const opt = document.createElement('option');
-                    opt.value = t.id;
-                    opt.innerText = `${t.title}`;
-                    tripSelect.appendChild(opt);
-                }
-            });
-        }
-
-        function renderParticipants(participants, trips) {
-            const table = document.getElementById('participantsTable');
-            if (!table) return;
-            table.innerHTML = '';
-
-            participants.forEach(p => {
-                const trip = trips.find(t => t.id === p.trip_id);
-                const tripTitle = trip ? trip.title : 'نامشخص';
-
-                table.innerHTML += `
-                    <tr>
-                        <td><strong>${p.full_name}</strong></td>
-                        <td>${p.national_id}</td>
-                        <td>${p.phone_number || p.phone || '-'}</td>
-                        <td>${tripTitle}</td>
-                        <td>
-                            <button class="btn-action btn-delete" onclick="deleteParticipant(${p.id})">حذف</button>
-                        </td>
-                    </tr>
-                `;
-            });
-        }
-
-        function resetTripForm() {
-            const form = document.getElementById('tripForm');
-            if (form) form.reset();
-            const idInput = document.getElementById('t_id') || document.getElementById('trip_id');
-            if (idInput) idInput.value = '';
-        }
-
-        // ثبت Service Worker برای PWA
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js')
-                    .then(reg => console.log('Service Worker فعال شد:', reg.scope))
-                    .catch(err => console.log('خطا در Service Worker:', err));
-            });
-        }
-    </script>
+    // ثبت Service Worker برای PWA
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/sw.js')
+                .then(reg => console.log('Service Worker فعال شد:', reg.scope))
+                .catch(err => console.log('خطا در Service Worker:', err));
+        });
+    }
+</script>
 </body>
 </html>
