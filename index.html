@@ -596,5 +596,33 @@
         }
     }
 </script>
+}
+    </script>
+
+    <!-- اسکریپت جدید برای Service Worker و دریافت داده‌ها -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then(reg => console.log('Service Worker فعال شد:', reg.scope))
+            .catch(err => console.log('خطا در Service Worker:', err));
+        });
+      }
+
+      async function fetchTrips() {
+        try {
+          const response = await fetch('/trips');
+          const data = await response.json();
+          console.log('لیست سفرها:', data);
+        } catch (error) {
+          console.error('خطا در دریافت اطلاعات:', error);
+        }
+      }
+
+      fetchTrips();
+    </script>
+
+</body>
+</html>
 </body>
 </html>
