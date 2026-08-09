@@ -314,13 +314,15 @@
 <script>
     // ثبت سرویس ورکر PWA
     if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-            navigator.serviceWorker.register('/sw.js')
-                .then(reg => console.log('Service Worker فعال شد:', reg.scope))
-                .catch(err => console.error('خطا در ثبت Service Worker:', err));
+     window.addEventListener('load', () => {
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(registrations => {
+            for (let registration of registrations) {
+                registration.unregister();
+            }
         });
     }
-
+});
   const API = "";
 
     let db;

@@ -1,150 +1,137 @@
-import os
-import requests
-from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
+import logging
+from telegram import Update, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
 from telegram.ext import (
-    ApplicationBuilder,
-    CommandHandler,
-    MessageHandler,
-    ContextTypes,
-    ConversationHandler,
-    filters,
+    ApplicationBuilder, CommandHandler, ContextTypes, 
+    MessageHandler, ConversationHandler, filters
 )
+from sqlmodel import Session, select
 
-# تعریف مراحل گفتگو (فیلدهای ثبت‌نام)
-FULL_NAME, NATIONAL_ID, PHONE, SELECT_TRIP, CONFIRMATION = range(5)
+# وارد کردن دیتابیس و مدل‌ها از main
+from main import engine, Participant, Trip
 
-API_BASE_URL = "https://abarham-app.onrender.com"
-TOKEN = "8595655776:AAFlEH8DOxM8pZXdZaoPXjMwPzsYneY7_R8"
+TRIP_SELECT, NAME, NATIONAL_ID, PHONE = range(4)
 
-# مرحله ۱: شروع ثبت‌نام و دریافت نام
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def start_registration(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    with Session(engine) as session:
+        trips = session.exec(select(Trip)).all()
+        
+        if not trips:
+            await update.message.reply_text("❌ در حال حاضر هیچ توری برای ثبت‌نام فعال نیست.")
+            return ConversationHandler.END
+        
+        context.user_data['trips_map'] = {f"{t.title} (کد {t.id})": t.id for t in trips}
+        
+        keyboard = [[button] for button in context.user_data['trips_map'].keys()]
+        reply_markup = ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True)
+        
+        await update.message.reply_text(
+            "لطفاً توری که می‌خواهید در آن ثبت‌نام کنید را انتخاب کنید:",
+            reply_markup=reply_markup
+        )
+        return TRIP_SELECT
+
+async def select_trip(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    selected_option = update.message.text
+    trips_map = context.user_data.get('trips_map', {})
+    
+    if selected_option not in trips_map:
+        await update.message.reply_text("لطفاً یکی از گزینه‌های کیبورد را انتخاب کنید:")
+        return TRIP_SELECT
+    
+    context.user_data['trip_id'] = trips_map[selected_option]
+    context.user_data['selected_trip_title'] = selected_option
+    
     await update.message.reply_text(
-        "سلام! به سامانه ثبت‌نام تورهای طبیعت‌گردی اَبَرهام خوش آمدید. 🌲\n\n"
         "لطفاً **نام و نام خانوادگی** خود را وارد کنید:",
         reply_markup=ReplyKeyboardRemove()
     )
-    return FULL_NAME
+    return NAME
 
-# مرحله ۲: دریافت کد ملی
-async def get_full_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data['full_name'] = update.message.text.strip()
-    await update.message.reply_text("لطفاً **کد ملی** (۱۰ رقمی) خود را جهت صدور بیمه وارد کنید:")
+async def get_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    full_name = update.message.text.strip()
+    
+    if len(full_name) < 3:
+        await update.message.reply_text("لطفاً نام و نام خانوادگی معتبر وارد کنید:")
+        return NAME
+        
+    context.user_data['full_name'] = full_name
+    await update.message.reply_text("لطفاً **کد ملی** خود را وارد کنید:")
     return NATIONAL_ID
 
-# مرحله ۳: دریافت شماره تماس
 async def get_national_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data['national_id'] = update.message.text.strip()
-    await update.message.reply_text("لطفاً **شماره موبایل** در دسترس خود را وارد کنید:")
-    return PHONE
-
-# مرحله ۴: نمایش لیست تورها و انتخاب
-async def get_phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data['phone'] = update.message.text.strip()
-
-    # دریافت تورهای فعال از API
-    try:
-        response = requests.get(f"{API_BASE_URL}/trips")
-        trips = response.json()
-    except Exception:
-        await update.message.reply_text("❌ خطا در برقراری ارتباط با سرور.")
-        return ConversationHandler.END
-
-    if not trips:
-        await update.message.reply_text("⚠️ در حال حاضر هیچ توری برای ثبت‌نام فعال نیست.")
-        return ConversationHandler.END
-
-    context.user_data['available_trips'] = trips
-    keyboard = [[trip['title']] for trip in trips]
-    reply_markup = ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True)
-
+    national_id = update.message.text.strip()
+    
+    if not national_id.isdigit() or len(national_id) != 10:
+        await update.message.reply_text("کد ملی باید یک عدد ۱۰ رقمی باشد. لطفاً دوباره وارد کنید:")
+        return NATIONAL_ID
+        
+    context.user_data['national_id'] = national_id
+    
+    phone_keyboard = [[KeyboardButton("📱 ارسال شماره تماس من", request_contact=True)]]
+    reply_markup = ReplyKeyboardMarkup(phone_keyboard, one_time_keyboard=True, resize_keyboard=True)
+    
     await update.message.reply_text(
-        "لطفاً توری که قصد شرکت در آن را دارید انتخاب کنید:",
+        "لطفاً **شماره تماس** خود را وارد کنید یا از دکمه زیر جهت ارسال سریع استفاده کنید:",
         reply_markup=reply_markup
     )
-    return SELECT_TRIP
+    return PHONE
 
-# مرحله ۵: پیش‌نمایش و تأیید نهایی
-async def select_trip(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    selected_title = update.message.text.strip()
-    trips = context.user_data.get('available_trips', [])
-    selected_trip = next((t for t in trips if t['title'] == selected_title), None)
-
-    if not selected_trip:
-        await update.message.reply_text("❌ لطفاً یکی از گزینه‌های موجود را انتخاب کنید.")
-        return SELECT_TRIP
-
-    context.user_data['selected_trip'] = selected_trip
-
-    summary_text = (
-        "📋 **پیش‌نمایش اطلاعات ثبت‌نام:**\n\n"
-        f"👤 **نام و نام خانوادگی:** {context.user_data['full_name']}\n"
-        f"🆔 **کد ملی:** {context.user_data['national_id']}\n"
-        f"📱 **شماره تماس:** {context.user_data['phone']}\n"
-        f"🚌 **تور انتخابی:** {selected_trip['title']}\n\n"
-        "آیا اطلاعات مورد تأیید است؟"
-    )
-
-    confirm_keyboard = [["✅ تأیید و ثبت نهایی"], ["❌ انصراف"]]
-    reply_markup = ReplyKeyboardMarkup(confirm_keyboard, one_time_keyboard=True, resize_keyboard=True)
-
-    await update.message.reply_text(summary_text, parse_mode="Markdown", reply_markup=reply_markup)
-    return CONFIRMATION
-
-# مرحله ۶: ارسال نهایی به دیتابیس
-async def submit_data(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_choice = update.message.text.strip()
-
-    if user_choice == "❌ انصراف":
-        await update.message.reply_text("ثبت‌نام لغو شد.", reply_markup=ReplyKeyboardRemove())
-        return ConversationHandler.END
-
-    if user_choice != "✅ تأیید و ثبت نهایی":
-        await update.message.reply_text("لطفاً از دکمه‌های پایین انتخاب کنید.")
-        return CONFIRMATION
-
-    payload = {
-        "trip_id": context.user_data['selected_trip']['id'],
-        "full_name": context.user_data['full_name'],
-        "national_id": context.user_data['national_id'],
-        "phone": context.user_data['phone']
-    }
-
+async def get_phone_and_save(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.message.contact:
+        phone_number = update.message.contact.phone_number
+    else:
+        phone_number = update.message.text.strip()
+        
+    context.user_data['phone_number'] = phone_number
+    
     try:
-        res = requests.post(f"{API_BASE_URL}/participants", json=payload)
-        if res.status_code in [200, 201]:
-            await update.message.reply_text(
-                "🎉 **ثبت‌نام شما با موفقیت در سامانه اَبَرهام ثبت شد!**",
-                parse_mode="Markdown",
-                reply_markup=ReplyKeyboardRemove()
+        with Session(engine) as session:
+            new_participant = Participant(
+                full_name=context.user_data['full_name'],
+                national_id=context.user_data['national_id'],
+                phone_number=context.user_data['phone_number'],
+                trip_id=context.user_data['trip_id']
             )
-        else:
-            await update.message.reply_text("❌ خطایی در ثبت اطلاعات رخ داد.")
-    except Exception:
-        await update.message.reply_text("❌ خطای ارتباط با سرور.")
-
+            session.add(new_participant)
+            session.commit()
+            
+        await update.message.reply_text(
+            f"✅ **ثبت‌نام شما با موفقیت انجام شد!**\n\n"
+            f"🏕 **تور:** {context.user_data['selected_trip_title']}\n"
+            f"👤 **نام:** {context.user_data['full_name']}\n"
+            f"🆔 **کد ملی:** {context.user_data['national_id']}\n"
+            f"📞 **شماره تماس:** {context.user_data['phone_number']}",
+            reply_markup=ReplyKeyboardRemove()
+        )
+    except Exception as e:
+        await update.message.reply_text(
+            "❌ خطایی در ذخیره اطلاعات رخ داد. لطفاً مجدداً تلاش کنید.",
+            reply_markup=ReplyKeyboardRemove()
+        )
+        
     return ConversationHandler.END
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("فرآیند ثبت‌نام لغو شد.", reply_markup=ReplyKeyboardRemove())
     return ConversationHandler.END
 
-def main():
-    app = ApplicationBuilder().token(TOKEN).build()
+if __name__ == '__main__':
+    app = ApplicationBuilder().token("8595655776:AAFlEH8DOxM8pZXdZaoPXjMwPzsYneY7_R8").build()
 
     conv_handler = ConversationHandler(
-        entry_points=[CommandHandler("start", start)],
+        entry_points=[CommandHandler('start', start_registration), CommandHandler('register', start_registration)],
         states={
-            FULL_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_full_name)],
+            TRIP_SELECT: [MessageHandler(filters.TEXT & ~filters.COMMAND, select_trip)],
+            NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_name)],
             NATIONAL_ID: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_national_id)],
-            PHONE: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_phone)],
-            SELECT_TRIP: [MessageHandler(filters.TEXT & ~filters.COMMAND, select_trip)],
-            CONFIRMATION: [MessageHandler(filters.TEXT & ~filters.COMMAND, submit_data)],
+            PHONE: [
+                MessageHandler(filters.CONTACT, get_phone_and_save),
+                MessageHandler(filters.TEXT & ~filters.COMMAND, get_phone_and_save)
+            ],
         },
-        fallbacks=[CommandHandler("cancel", cancel)],
+        fallbacks=[CommandHandler('cancel', cancel)],
     )
 
     app.add_handler(conv_handler)
+    print("🤖 ربات با موفقیت روشن شد و آماده دریافت اطلاعات است...")
     app.run_polling()
-
-if __name__ == "__main__":
-    main()
