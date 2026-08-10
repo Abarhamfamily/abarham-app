@@ -1,13 +1,15 @@
 import os
 import logging
 from contextlib import asynccontextmanager
-from typing import List
+from datetime import datetime
+from typing import List, Optional
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse, FileResponse, Response
 from sqlmodel import Session, select
 
-from models import engine, create_db_and_tables, Trip, Participant
+from models import engine, create_db_and_tables, Trip, Participant, Payment
+from payment import transition_status, get_receipt_path
 from bot import start_bot
 
 logging.basicConfig(level=logging.INFO)
@@ -194,6 +196,120 @@ def delete_participant(participant_id: int):
         session.delete(db_participant)
         session.commit()
         return {"ok": True}
+
+
+# ---------------------------------------------------------------------------
+# مدیریت پرداخت‌ها (ادمین)
+# ---------------------------------------------------------------------------
+VALID_PAYMENT_STATUSES = {"pending_review", "confirmed", "rejected"}
+
+
+@app.get("/payments")
+def get_payments(status: Optional[str] = None):
+    if status is not None and status not in VALID_PAYMENT_STATUSES:
+        raise HTTPException(400, "وضعیت نامعتبر. مقادیر مجاز: pending_review, confirmed, rejected")
+
+    with Session(engine) as session:
+        query = select(Payment)
+        if status:
+            query = query.where(Payment.status == status)
+
+        payments = session.exec(query).all()
+
+        # افزودن اطلاعات مرتبط Trip و Participant برای نمایش بهتر (بدون تغییر مدل‌ها)
+        result = []
+        for p in payments:
+            trip = session.get(Trip, p.trip_id)
+            participant = session.get(Participant, p.participant_id)
+            result.append({
+                "id": p.id,
+                "participant_id": p.participant_id,
+                "trip_id": p.trip_id,
+                "telegram_user_id": p.telegram_user_id,
+                "payment_type": p.payment_type,
+                "expected_amount": p.expected_amount,
+                "receipt_file_id": p.receipt_file_id,
+                "receipt_file_unique_id": p.receipt_file_unique_id,
+                "receipt_local_path": p.receipt_local_path,
+                "status": p.status,
+                "created_at": p.created_at,
+                "reviewed_at": p.reviewed_at,
+                "review_note": p.review_note,
+                "trip": {
+                    "id": trip.id if trip else None,
+                    "title": trip.title if trip else None,
+                    "price": trip.price if trip else None,
+                } if trip else None,
+                "participant": {
+                    "id": participant.id if participant else None,
+                    "full_name": participant.full_name if participant else None,
+                    "national_id": participant.national_id if participant else None,
+                    "phone_number": participant.phone_number if participant else None,
+                } if participant else None,
+            })
+        return result
+
+
+@app.post("/payments/{payment_id}/confirm")
+def confirm_payment(payment_id: int):
+    with Session(engine) as session:
+        payment = session.get(Payment, payment_id)
+        if not payment:
+            raise HTTPException(404, "پرداخت یافت نشد")
+
+        if payment.status != "pending_review":
+            raise HTTPException(400, "فقط پرداخت‌های در انتظار بررسی قابل تأیید هستند")
+
+        try:
+            transition_status(payment, "confirmed")
+        except ValueError as e:
+            raise HTTPException(400, str(e))
+
+        payment.reviewed_at = datetime.now().isoformat()
+        session.add(payment)
+        session.commit()
+        session.refresh(payment)
+        return payment
+
+
+@app.post("/payments/{payment_id}/reject")
+def reject_payment(payment_id: int):
+    with Session(engine) as session:
+        payment = session.get(Payment, payment_id)
+        if not payment:
+            raise HTTPException(404, "پرداخت یافت نشد")
+
+        if payment.status != "pending_review":
+            raise HTTPException(400, "فقط پرداخت‌های در انتظار بررسی قابل رد شدن هستند")
+
+        try:
+            transition_status(payment, "rejected")
+        except ValueError as e:
+            raise HTTPException(400, str(e))
+
+        payment.reviewed_at = datetime.now().isoformat()
+        session.add(payment)
+        session.commit()
+        session.refresh(payment)
+        return payment
+
+
+@app.get("/receipts/{filename}")
+def get_receipt(filename: str):
+    # جلوگیری از Path Traversal — فقط فایل‌های داخل پوشه receipts/ سرو می‌شوند
+    receipts_dir = os.path.abspath("receipts")
+    # ساخت مسیر کامل داخل receipts و resolve امن
+    full_path = os.path.join("receipts", filename)
+    safe_path = os.path.abspath(get_receipt_path(full_path))
+
+    # بررسی اینکه مسیر resolve شده داخل receipts_dir باشد
+    if not safe_path.startswith(receipts_dir + os.sep):
+        raise HTTPException(400, "نام فایل نامعتبر است")
+
+    if not os.path.exists(safe_path):
+        raise HTTPException(404, "فیش یافت نشد")
+
+    return FileResponse(safe_path)
 
 
 if __name__ == "__main__":

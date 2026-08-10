@@ -26,8 +26,28 @@ class Participant(SQLModel, table=True):
     national_id: str
     phone_number: str
     trip_id: int = Field(foreign_key="trip.id")
+    telegram_user_id: Optional[int] = None   # شناسه کاربر تلگرام (برای پرداخت)
     payment_status: str = "پرداخت بیعانه"   # یا "پرداخت کامل"
     paid_amount: float = 0.0
+
+
+# ---------------------------------------------------------------------------
+# مدل پرداخت
+# ---------------------------------------------------------------------------
+class Payment(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    participant_id: int = Field(foreign_key="participant.id")
+    trip_id: int = Field(foreign_key="trip.id")
+    telegram_user_id: int
+    payment_type: str                                    # "deposit" | "full"
+    expected_amount: float                               # snapshot مبلغ در لحظه ثبت
+    receipt_file_id: str                                 # file_id تلگرام (الزامی)
+    receipt_file_unique_id: Optional[str] = None
+    receipt_local_path: Optional[str] = None             # "receipts/receipt_<uuid>.jpg"
+    status: str = "pending_review"                       # pending_review | confirmed | rejected
+    created_at: str
+    reviewed_at: Optional[str] = None
+    review_note: Optional[str] = None
 
 
 # ---------------------------------------------------------------------------

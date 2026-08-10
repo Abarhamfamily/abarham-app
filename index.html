@@ -170,6 +170,105 @@
         .btn-delete { background-color: #ef4444; color: white; }
 
         .full-width { grid-column: 1 / -1; }
+
+        /* --- بخش بررسی پرداخت‌ها --- */
+        .payments-filter {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+        }
+
+        .filter-btn {
+            padding: 8px 16px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background: var(--card-bg);
+            font-family: 'Vazirmatn', sans-serif;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .filter-btn.active {
+            background-color: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .badge-pending { background-color: #fef3c7; color: #92400e; }
+        .badge-confirmed { background-color: #e0f2f1; color: #004d40; }
+        .badge-rejected { background-color: #fee2e2; color: #991b1b; }
+
+        .btn-confirm { background-color: #16a34a; color: white; }
+        .btn-reject { background-color: #dc2626; color: white; }
+
+        .receipt-thumb {
+            width: 50px;
+            height: 50px;
+            object-fit: cover;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .receipt-thumb:hover { transform: scale(1.1); }
+
+        .payments-loading, .payments-error, .payments-empty {
+            text-align: center;
+            padding: 20px;
+            color: #6b7280;
+            font-size: 0.9rem;
+        }
+
+        .payments-error { color: #dc2626; }
+
+        /* Modal برای نمایش فیش بزرگ */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-overlay.show { display: flex; }
+
+        .modal-content {
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 12px;
+            max-width: 90%;
+            max-height: 90%;
+            position: relative;
+        }
+
+        .modal-content img {
+            max-width: 100%;
+            max-height: 80vh;
+            border-radius: 8px;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: #ef4444;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
@@ -304,6 +403,47 @@
             </table>
         </div>
     </div>
+
+    <!-- بررسی پرداخت‌ها -->
+    <div class="card full-width" style="margin-top: 15px;">
+        <h2>💳 بررسی پرداخت‌ها</h2>
+
+        <div class="payments-filter">
+            <button class="filter-btn active" data-status="" onclick="setPaymentFilter('')">همه</button>
+            <button class="filter-btn" data-status="pending_review" onclick="setPaymentFilter('pending_review')">⏳ در انتظار بررسی</button>
+            <button class="filter-btn" data-status="confirmed" onclick="setPaymentFilter('confirmed')">✅ تأیید شده</button>
+            <button class="filter-btn" data-status="rejected" onclick="setPaymentFilter('rejected')">❌ رد شده</button>
+        </div>
+
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>شماره</th>
+                        <th>شرکت‌کننده</th>
+                        <th>تور</th>
+                        <th>نوع پرداخت</th>
+                        <th>مبلغ</th>
+                        <th>وضعیت</th>
+                        <th>تاریخ ارسال</th>
+                        <th>تاریخ بررسی</th>
+                        <th>فیش</th>
+                        <th>عملیات</th>
+                    </tr>
+                </thead>
+                <tbody id="paymentsTable"></tbody>
+            </table>
+        </div>
+        <div id="paymentsStatus" class="payments-loading">در حال دریافت پرداخت‌ها...</div>
+    </div>
+</div>
+
+<!-- Modal نمایش فیش بزرگ -->
+<div class="modal-overlay" id="receiptModal" onclick="closeReceiptModal()">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <button class="modal-close" onclick="closeReceiptModal()">✕</button>
+        <img id="receiptModalImg" src="" alt="فیش پرداخت">
+    </div>
 </div>
 
 <script>
@@ -323,7 +463,10 @@
 
     request.onsuccess = (e) => {
         db = e.target.result;
-        checkServerStatus().then(syncData);
+        checkServerStatus().then(() => {
+            syncData();
+            if (isServerOnline) loadPayments();
+        });
         setInterval(checkServerStatus, 5000);
     };
 
@@ -571,6 +714,7 @@
 
             renderTrips();
             renderParticipants();
+            if (isServerOnline) loadPayments();
         } catch (err) {
             console.error("خطا در دریافت داده‌ها:", err);
             loadLocalData();
@@ -671,6 +815,167 @@
                 </tr>
             `;
         });
+    }
+
+    // -----------------------------------------------------------------------
+    // ۱۰. بررسی پرداخت‌ها
+    // -----------------------------------------------------------------------
+    let currentPaymentFilter = '';
+    let allPayments = [];
+
+    async function loadPayments() {
+        const statusEl = document.getElementById('paymentsStatus');
+        const table = document.getElementById('paymentsTable');
+        if (!table || !statusEl) return;
+
+        if (!isServerOnline) {
+            statusEl.className = 'payments-error';
+            statusEl.textContent = '❌ برای مشاهده پرداخت‌ها باید به سرور متصل باشید.';
+            return;
+        }
+
+        statusEl.className = 'payments-loading';
+        statusEl.textContent = 'در حال دریافت پرداخت‌ها...';
+        table.innerHTML = '';
+
+        try {
+            const url = currentPaymentFilter
+                ? `/payments?status=${encodeURIComponent(currentPaymentFilter)}`
+                : '/payments';
+            const res = await fetch(url, { cache: 'no-store' });
+            if (!res.ok) throw new Error('Server error');
+
+            allPayments = await res.json();
+            renderPayments();
+        } catch (err) {
+            console.error('خطا در دریافت پرداخت‌ها:', err);
+            statusEl.className = 'payments-error';
+            statusEl.textContent = '❌ دریافت اطلاعات پرداخت‌ها با خطا مواجه شد.';
+        }
+    }
+
+    function setPaymentFilter(status) {
+        currentPaymentFilter = status;
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.status === status);
+        });
+        loadPayments();
+    }
+
+    function formatPaymentType(type) {
+        return type === 'full' ? '💵 پرداخت کامل' : '💰 بیعانه';
+    }
+
+    function formatPaymentStatus(status) {
+        const map = {
+            'pending_review': ['⏳ در انتظار بررسی', 'badge-pending'],
+            'confirmed': ['✅ تأیید شده', 'badge-confirmed'],
+            'rejected': ['❌ رد شده', 'badge-rejected'],
+        };
+        const [text, cls] = map[status] || [status, ''];
+        return `<span class="badge ${cls}">${text}</span>`;
+    }
+
+    function getReceiptUrl(payment) {
+        // استخراج filename از receipt_local_path (مثل receipts/receipt_abc.jpg)
+        if (!payment.receipt_local_path) return null;
+        const parts = payment.receipt_local_path.split(/[\\/]/);
+        const filename = parts[parts.length - 1];
+        if (!filename) return null;
+        return `/receipts/${encodeURIComponent(filename)}`;
+    }
+
+    function renderPayments() {
+        const table = document.getElementById('paymentsTable');
+        const statusEl = document.getElementById('paymentsStatus');
+        if (!table || !statusEl) return;
+
+        table.innerHTML = '';
+
+        if (allPayments.length === 0) {
+            statusEl.className = 'payments-empty';
+            statusEl.textContent = 'هیچ پرداختی برای نمایش وجود ندارد.';
+            return;
+        }
+
+        statusEl.className = 'payments-loading';
+        statusEl.textContent = '';
+
+        allPayments.forEach(p => {
+            const participantName = p.participant ? (p.participant.full_name || 'نامشخص') : 'نامشخص';
+            const tripTitle = p.trip ? (p.trip.title || 'نامشخص') : 'نامشخص';
+            const receiptUrl = getReceiptUrl(p);
+            const canReview = p.status === 'pending_review';
+
+            const receiptCell = receiptUrl
+                ? `<img class="receipt-thumb" src="${receiptUrl}" alt="فیش" title="مشاهده فیش" onclick="openReceiptModal('${receiptUrl}')">`
+                : '<span style="color:#9ca3af;">-</span>';
+
+            const actionsCell = canReview
+                ? `<button class="btn-action btn-confirm" onclick="confirmPayment(${p.id})">✅ تأیید</button>
+                   <button class="btn-action btn-reject" onclick="rejectPayment(${p.id})">❌ رد</button>`
+                : '<span style="color:#9ca3af;">-</span>';
+
+            table.innerHTML += `
+                <tr>
+                    <td>${p.id}</td>
+                    <td><strong>${participantName}</strong></td>
+                    <td>${tripTitle}</td>
+                    <td>${formatPaymentType(p.payment_type)}</td>
+                    <td>${(p.expected_amount || 0).toLocaleString()} تومان</td>
+                    <td>${formatPaymentStatus(p.status)}</td>
+                    <td>${p.created_at ? p.created_at.replace('T', ' ').slice(0, 19) : '-'}</td>
+                    <td>${p.reviewed_at ? p.reviewed_at.replace('T', ' ').slice(0, 19) : '-'}</td>
+                    <td>${receiptCell}</td>
+                    <td>${actionsCell}</td>
+                </tr>
+            `;
+        });
+    }
+
+    async function confirmPayment(id) {
+        if (!confirm('آیا از تأیید این پرداخت مطمئن هستید؟')) return;
+        try {
+            const res = await fetch(`/payments/${id}/confirm`, { method: 'POST' });
+            if (res.ok) {
+                alert('✅ پرداخت با موفقیت تأیید شد.');
+                loadPayments();
+            } else {
+                const errData = await res.json();
+                alert('❌ خطا در تأیید پرداخت: ' + (errData.detail || 'خطای ناشناخته'));
+            }
+        } catch (err) {
+            alert('❌ خطا در ارتباط با سرور.');
+        }
+    }
+
+    async function rejectPayment(id) {
+        if (!confirm('آیا از رد کردن این فیش مطمئن هستید؟')) return;
+        try {
+            const res = await fetch(`/payments/${id}/reject`, { method: 'POST' });
+            if (res.ok) {
+                alert('❌ پرداخت رد شد.');
+                loadPayments();
+            } else {
+                const errData = await res.json();
+                alert('❌ خطا در رد پرداخت: ' + (errData.detail || 'خطای ناشناخته'));
+            }
+        } catch (err) {
+            alert('❌ خطا در ارتباط با سرور.');
+        }
+    }
+
+    function openReceiptModal(src) {
+        const modal = document.getElementById('receiptModal');
+        const img = document.getElementById('receiptModalImg');
+        if (!modal || !img) return;
+        img.src = src;
+        modal.classList.add('show');
+    }
+
+    function closeReceiptModal() {
+        const modal = document.getElementById('receiptModal');
+        if (modal) modal.classList.remove('show');
     }
 
     // ثبت Service Worker برای PWA
