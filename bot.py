@@ -197,10 +197,7 @@ async def get_national_id(
 # دریافت شماره تماس و تکمیل ثبت‌نام
 # ===========================================================================
 
-async def get_phone_and_save(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE
-):
+async def get_phone_and_save(update: Update, context: ContextTypes.DEFAULT_TYPE):
     phone_number = (
         update.message.contact.phone_number
         if update.message.contact
@@ -212,25 +209,28 @@ async def get_phone_and_save(
     trip_id = context.user_data.get("trip_id")
 
     try:
+        # ---------------------------------------------------------
+        # بررسی و ذخیره اطلاعات در دیتابیس
+        # ---------------------------------------------------------
         with Session(engine) as session:
-
-            # ---------------------------------------------------------------
-            # پیدا کردن تور
-            # ---------------------------------------------------------------
-
             trip = session.get(Trip, trip_id)
 
             if not trip:
                 await update.message.reply_text(
                     "❌ این تور دیگر موجود نیست.",
-                    reply_markup=ReplyKeyboardRemove(),
+                    reply_markup=ReplyKeyboardRemove()
                 )
                 return ConversationHandler.END
 
-            # ---------------------------------------------------------------
-            # بررسی ظرفیت
-            # ---------------------------------------------------------------
+            # مهم:
+            # اطلاعات موردنیاز تور را قبل از بسته‌شدن Session
+            # در متغیرهای معمولی ذخیره می‌کنیم.
+            trip_price = trip.price
+            trip_title = trip.title
 
+            # -----------------------------------------------------
+            # بررسی ظرفیت تور
+            # -----------------------------------------------------
             if trip.capacity:
                 current_count = len(
                     session.exec(
@@ -243,130 +243,111 @@ async def get_phone_and_save(
                 if current_count >= trip.capacity:
                     await update.message.reply_text(
                         "❌ ظرفیت این تور تکمیل شده است.",
-                        reply_markup=ReplyKeyboardRemove(),
+                        reply_markup=ReplyKeyboardRemove()
                     )
                     return ConversationHandler.END
 
-            # ---------------------------------------------------------------
+            # -----------------------------------------------------
             # جلوگیری از ثبت‌نام تکراری
-            # ---------------------------------------------------------------
-
+            # -----------------------------------------------------
             existing = session.exec(
                 select(Participant).where(
-                    Participant.national_id
-                    == context.user_data["national_id"],
-                    Participant.trip_id == trip_id,
+                    Participant.national_id == context.user_data["national_id"],
+                    Participant.trip_id == trip_id
                 )
             ).first()
 
             if existing:
                 await update.message.reply_text(
                     "❌ شما قبلاً برای این تور ثبت‌نام کرده‌اید.",
-                    reply_markup=ReplyKeyboardRemove(),
+                    reply_markup=ReplyKeyboardRemove()
                 )
                 return ConversationHandler.END
 
-            # ---------------------------------------------------------------
-            # ساخت Participant
-            # ---------------------------------------------------------------
-
+            # -----------------------------------------------------
+            # ساخت شرکت‌کننده
+            # -----------------------------------------------------
             new_participant = Participant(
                 full_name=context.user_data["full_name"],
                 national_id=context.user_data["national_id"],
                 phone_number=context.user_data["phone_number"],
                 trip_id=trip_id,
-                telegram_user_id=update.effective_user.id,
+                telegram_user_id=update.effective_user.id
             )
 
             session.add(new_participant)
             session.commit()
             session.refresh(new_participant)
 
+            # ذخیره شناسه شرکت‌کننده
             participant_id = new_participant.id
 
-        # -------------------------------------------------------------------
-        # ثبت‌نام موفق شد
-        # -------------------------------------------------------------------
+        # ---------------------------------------------------------
+        # از اینجا Session بسته شده است.
+        # بنابراین فقط از متغیرهای معمولی استفاده می‌کنیم.
+        # ---------------------------------------------------------
 
         context.user_data["payment_trip_id"] = trip_id
         context.user_data["payment_participant_id"] = participant_id
 
-        # -------------------------------------------------------------------
-        # محاسبه مبلغ‌های اولیه
-        # -------------------------------------------------------------------
+        # ---------------------------------------------------------
+        # محاسبه مبلغ پرداخت
+        # ---------------------------------------------------------
 
-        deposit_amount = calculate_deposit(trip.price)
+        deposit_amount = calculate_deposit(trip_price)
 
-        # برای فردی که هنوز هیچ پرداخت تأییدشده‌ای ندارد،
-        # مبلغ کامل بر اساس confirmed_total = 0 محاسبه می‌شود.
+        # در این مرحله هنوز هیچ پرداخت تأییدشده‌ای وجود ندارد.
         full_amount = calculate_full_amount(
-            trip.price,
-            0,
+            trip_price,
+            0
         )
 
+        # ---------------------------------------------------------
+        # ساخت کیبورد انتخاب نوع پرداخت
+        # ---------------------------------------------------------
+
         keyboard = [
-            [
-                f"💰 پرداخت بیعانه — "
-                f"{deposit_amount:,.0f} تومان"
-            ],
-            [
-                f"💵 پرداخت کامل — "
-                f"{full_amount:,.0f} تومان"
-            ],
+            [f"💰 پرداخت بیعانه — {deposit_amount:,.0f} تومان"],
+            [f"💵 پرداخت کامل — {full_amount:,.0f} تومان"],
         ]
 
         reply_markup = ReplyKeyboardMarkup(
             keyboard,
             one_time_keyboard=True,
-            resize_keyboard=True,
+            resize_keyboard=True
         )
+
+        # ---------------------------------------------------------
+        # اعلام ثبت‌نام و ورود مستقیم به مرحله پرداخت
+        # ---------------------------------------------------------
 
         await update.message.reply_text(
             "✅ ثبت‌نام شما با موفقیت انجام شد!\n\n"
-            f"🏕 تور: {trip.title}\n"
+            f"🏕 تور: {trip_title}\n"
             f"👤 نام: {context.user_data['full_name']}\n"
             f"🆔 کد ملی: {context.user_data['national_id']}\n"
             f"📞 شماره تماس: {context.user_data['phone_number']}\n\n"
-            "حالا نوع پرداخت را انتخاب کنید:",
-            reply_markup=reply_markup,
+            "💳 حالا نوع پرداخت را انتخاب کنید:",
+            reply_markup=reply_markup
         )
 
-        # ---------------------------------------------------------------
-        # نکته بسیار مهم:
-        # Conversation باید وارد مرحله پرداخت شود.
-        # ---------------------------------------------------------------
-
+        # بسیار مهم:
+        # Conversation اصلی از PHONE مستقیماً
+        # وارد مرحله انتخاب پرداخت می‌شود.
         return PAY_TYPE_SELECT
 
     except Exception as e:
         logger.error(
             f"خطا در ثبت‌نام مسافر: {e}",
-            exc_info=True,
+            exc_info=True
         )
 
         await update.message.reply_text(
             "❌ خطایی در ذخیره اطلاعات رخ داد. لطفاً مجدداً تلاش کنید.",
-            reply_markup=ReplyKeyboardRemove(),
+            reply_markup=ReplyKeyboardRemove()
         )
 
         return ConversationHandler.END
-
-
-# ===========================================================================
-# لغو ثبت‌نام
-# ===========================================================================
-
-async def cancel(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE
-):
-    await update.message.reply_text(
-        "فرآیند ثبت‌نام لغو شد.",
-        reply_markup=ReplyKeyboardRemove(),
-    )
-
-    return ConversationHandler.END
-
 
 # ===========================================================================
 # پرداخت تور برای کاربران ثبت‌نام‌شده قبلی
