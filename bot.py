@@ -1,4 +1,3 @@
-```python
 import os
 import logging
 from datetime import datetime
@@ -1121,4 +1120,3 @@ async def start_bot():
     await telegram_app.updater.start_polling()
 
     return telegram_app
-```
