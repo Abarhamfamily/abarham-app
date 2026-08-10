@@ -17,18 +17,20 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("abarham")
 
 # نگه‌داری رفرنس به اپ تلگرام برای shutdown تمیز
-telegram_app = None
+ttelegram_app = None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-   # اجرای migrationهای لازم قبل از ساخت جدول‌ها
-run_migrations()
+    # اجرای migrationهای دیتابیس
+    run_migrations()
 
-# ساخت جدول‌های جدید در صورت نیاز
-create_db_and_tables()
+    # ساخت جدول‌های جدید در صورت نیاز
+    create_db_and_tables()
+
     # اجرای ربات تلگرام در پس‌زمینه
     global telegram_app
+
     try:
         telegram_app = await start_bot()
         logger.info("🤖 وب‌سرور و ربات تلگرام فعال شدند.")
@@ -49,7 +51,6 @@ create_db_and_tables()
 
 
 app = FastAPI(lifespan=lifespan)
-
 
 # ---------------------------------------------------------------------------
 # فایل‌های استاتیک / PWA
