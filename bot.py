@@ -924,6 +924,28 @@ async def cancel_payment(
 # ===========================================================================
 # ساخت Application ربات
 # ===========================================================================
+async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(
+        "فرآیند ثبت‌نام لغو شد.",
+        reply_markup=ReplyKeyboardRemove()
+    )
+    return ConversationHandler.END
+async def cancel_payment(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(
+        "فرآیند پرداخت لغو شد.",
+        reply_markup=ReplyKeyboardRemove()
+    )
+
+    for key in [
+        "payment_trips_map",
+        "payment_trip_id",
+        "payment_participant_id",
+        "payment_type",
+        "payment_expected_amount",
+    ]:
+        context.user_data.pop(key, None)
+
+    return ConversationHandler.END
 
 def build_bot_app():
 
