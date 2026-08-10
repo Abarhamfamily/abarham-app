@@ -5,6 +5,7 @@ from datetime import datetime
 from typing import List, Optional
 
 from fastapi import FastAPI, HTTPException
+from migration import run_migrations
 from fastapi.responses import HTMLResponse, FileResponse, Response
 from sqlmodel import Session, select
 
@@ -21,9 +22,11 @@ telegram_app = None
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # ساخت جدول‌های دیتابیس
-    create_db_and_tables()
+   # اجرای migrationهای لازم قبل از ساخت جدول‌ها
+run_migrations()
 
+# ساخت جدول‌های جدید در صورت نیاز
+create_db_and_tables()
     # اجرای ربات تلگرام در پس‌زمینه
     global telegram_app
     try:
