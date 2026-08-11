@@ -168,6 +168,7 @@
 
         .btn-edit { background-color: #f59e0b; color: white; }
         .btn-delete { background-color: #ef4444; color: white; }
+        .btn-view { background-color: #2563eb; color: white; }
 
         .full-width { grid-column: 1 / -1; }
 
@@ -443,6 +444,30 @@
     <div class="modal-content" onclick="event.stopPropagation()">
         <button class="modal-close" onclick="closeReceiptModal()">✕</button>
         <img id="receiptModalImg" src="" alt="فیش پرداخت">
+    </div>
+</div>
+
+<!-- Modal لیست شرکت‌کنندگان هر تور -->
+<div class="modal-overlay" id="tripParticipantsModal" onclick="closeTripParticipantsModal()">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <button class="modal-close" onclick="closeTripParticipantsModal()">✕</button>
+        <h2 id="tripParticipantsTitle" style="margin-top: 0; color: var(--primary);">شرکت‌کنندگان تور</h2>
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ردیف</th>
+                        <th>نام و نام خانوادگی</th>
+                        <th>کد ملی</th>
+                        <th>شماره موبایل</th>
+                        <th>وضعیت پرداخت</th>
+                        <th>مبلغ دریافتی</th>
+                    </tr>
+                </thead>
+                <tbody id="tripParticipantsTable"></tbody>
+            </table>
+        </div>
+        <div id="tripParticipantsStatus" class="payments-loading">در حال دریافت شرکت‌کنندگان...</div>
     </div>
 </div>
 
@@ -752,6 +777,7 @@
 
             tripsTable.innerHTML += `
                 <tr>
+                <td>${index + 1}</td>
                     <td><strong>${t.title}</strong></td>
                     <td>${t.destination || '-'}</td>
                     <td>${t.date || '-'}</td>
@@ -760,6 +786,7 @@
                     <td>${filteredParts.length} نفر</td>
                     <td style="color: #00796b; font-weight: bold;">${totalCollected.toLocaleString()} تومان</td>
                     <td>
+                        <button class="btn-action btn-view" onclick="showTripParticipants(${t.id})">👥 شرکت‌کنندگان</button>
                         <button class="btn-action btn-edit" onclick="editTrip(${t.id})">ویرایش</button>
                         <button class="btn-action btn-delete" onclick="deleteTrip(${t.id})">حذف</button>
                     </td>
@@ -975,6 +1002,65 @@
 
     function closeReceiptModal() {
         const modal = document.getElementById('receiptModal');
+        if (modal) modal.classList.remove('show');
+    }
+
+    // -----------------------------------------------------------------------
+    // ۱۱. نمایش شرکت‌کنندگان یک تور خاص
+    // -----------------------------------------------------------------------
+    async function showTripParticipants(tripId) {
+        const modal = document.getElementById('tripParticipantsModal');
+        const table = document.getElementById('tripParticipantsTable');
+        const statusEl = document.getElementById('tripParticipantsStatus');
+        const titleEl = document.getElementById('tripParticipantsTitle');
+        if (!modal || !table || !statusEl) return;
+
+        const trip = allTrips.find(t => t.id === tripId);
+        if (trip) {
+            titleEl.textContent = `شرکت‌کنندگان: ${trip.title}`;
+        }
+
+        modal.classList.add('show');
+        table.innerHTML = '';
+        statusEl.className = 'payments-loading';
+        statusEl.textContent = 'در حال دریافت شرکت‌کنندگان...';
+
+        try {
+            const res = await fetch(`/trips/${tripId}/participants`, { cache: 'no-store' });
+            if (!res.ok) throw new Error('Server error');
+
+            const participants = await res.json();
+
+            if (participants.length === 0) {
+                statusEl.className = 'payments-empty';
+                statusEl.textContent = 'هیچ شرکت‌کننده‌ای برای این تور ثبت نشده است.';
+                return;
+            }
+
+            statusEl.className = 'payments-loading';
+            statusEl.textContent = '';
+
+            participants.forEach((p, index) => {
+                const badgeClass = p.payment_status === 'پرداخت کامل' ? 'badge-full' : 'badge-deposit';
+                table.innerHTML += `
+                    <tr>
+                        <td><strong>${p.full_name}</strong></td>
+                        <td>${p.national_id || '-'}</td>
+                        <td>${p.phone_number || '-'}</td>
+                        <td><span class="badge ${badgeClass}">${p.payment_status || '-'}</span></td>
+                        <td>${(p.paid_amount || 0).toLocaleString()} تومان</td>
+                    </tr>
+                `;
+            });
+        } catch (err) {
+            console.error('خطا در دریافت شرکت‌کنندگان:', err);
+            statusEl.className = 'payments-error';
+            statusEl.textContent = '❌ دریافت اطلاعات شرکت‌کنندگان با خطا مواجه شد.';
+        }
+    }
+
+    function closeTripParticipantsModal() {
+        const modal = document.getElementById('tripParticipantsModal');
         if (modal) modal.classList.remove('show');
     }
 
