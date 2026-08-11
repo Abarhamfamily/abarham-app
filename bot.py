@@ -322,7 +322,7 @@ async def get_phone_and_save(update: Update, context: ContextTypes.DEFAULT_TYPE)
         # ---------------------------------------------------------
 
         await update.message.reply_text(
-            "✅ ثبت‌نام شما با موفقیت انجام شد!\n\n"
+            "✅ اطلاعات شما با موفقیت دریافت شد\n\n"
             f"🏕 تور: {trip_title}\n"
             f"👤 نام: {context.user_data['full_name']}\n"
             f"🆔 کد ملی: {context.user_data['national_id']}\n"
