@@ -152,6 +152,18 @@ def get_participants():
         return session.exec(select(Participant)).all()
 
 
+@app.get("/trips/{trip_id}/participants", response_model=List[Participant])
+def get_trip_participants(trip_id: int):
+    """دریافت لیست شرکت‌کنندگان یک تور خاص"""
+    with Session(engine) as session:
+        trip = session.get(Trip, trip_id)
+        if not trip:
+            raise HTTPException(404, "تور یافت نشد")
+        return session.exec(
+            select(Participant).where(Participant.trip_id == trip_id)
+        ).all()
+
+
 @app.post("/participants", response_model=Participant)
 @app.post("/participants/", response_model=Participant)
 def create_participant(participant: Participant):
