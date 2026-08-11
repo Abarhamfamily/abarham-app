@@ -1,5 +1,6 @@
 import os
 import logging
+import asyncio
 from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import List, Optional
@@ -17,7 +18,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("abarham")
 
 # نگه‌داری رفرنس به اپ تلگرام برای shutdown تمیز
-ttelegram_app = None
+telegram_app = None
 
 
 @asynccontextmanager
@@ -285,6 +286,20 @@ def confirm_payment(payment_id: int):
         session.add(payment)
         session.commit()
         session.refresh(payment)
+            # ارسال پیام تأیید فیش به کاربر تلگرام
+    if telegram_app is not None and payment.telegram_user_id:
+        try:
+            asyncio.create_task(
+                telegram_app.bot.send_message(
+                    chat_id=payment.telegram_user_id,
+                    text=(
+                        "✅ فیش پرداخت شما با موفقیت تأیید شد.\n\n"
+                        "ثبت پرداخت شما در سیستم ابرهام ثبت شد."
+                    ),
+                )
+            )
+        except Exception as e:
+            logger.error(f"⚠️ خطا در ارسال پیام تأیید پرداخت: {e}")
         return payment
 
 
