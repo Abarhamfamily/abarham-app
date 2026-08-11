@@ -770,7 +770,7 @@
         tripsTable.innerHTML = '';
         if (tripSelect) tripSelect.innerHTML = '<option value="">-- انتخاب تور --</option>';
 
-        allTrips.forEach(t => {
+        allTrips.forEach((t, index) => {
             const filteredParts = allParticipants.filter(p => p.trip_id === t.id);
             const totalCollected = filteredParts.reduce((sum, p) => sum + (p.paid_amount || 0), 0);
             const capacityText = t.capacity ? `${filteredParts.length} / ${t.capacity}` : `${filteredParts.length} (نامحدود)`;
