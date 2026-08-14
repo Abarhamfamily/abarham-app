@@ -13,6 +13,7 @@ from sqlmodel import Session, select
 from models import engine, create_db_and_tables, Trip, Participant, Payment
 from payment import transition_status, get_receipt_path
 from bot import start_bot
+from telegram import InlineKeyboardMarkup, InlineKeyboardButton
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("abarham")
@@ -292,20 +293,31 @@ async def confirm_payment(payment_id: int):
             if payment.payment_type == "deposit":
                 message_text = (
                     "✅ بیعانه شما با موفقیت تأیید شد.\n\n"
-                    "برای نهایی شدن ثبت‌نام، لطفاً مبلغ باقی‌مانده را "
-                    "حداکثر تا یک هفته قبل از سفر پرداخت کنید."
+                    "💰 مبلغ بیعانه دریافت و ثبت شد.\n\n"
+                    "برای نهایی شدن ثبت‌نام، شما تا یک هفته قبل از سفر "
+                    "فرصت دارید مبلغ باقی‌مانده را تکمیل کنید."
+                )
+                reply_markup = InlineKeyboardMarkup(
+                    [
+                        [
+                            InlineKeyboardButton(
+                                "💵 پرداخت مابقی هزینه",
+                                callback_data=f"complete_payment:{payment.participant_id}",
+                            ),
+                        ],
+                    ]
                 )
             else:
                 message_text = (
                     "✅ پرداخت شما با موفقیت تأیید شد.\n\n"
                     "ثبت‌نام شما در سیستم ابرهام نهایی شد."
                 )
+                reply_markup = None
 
-            asyncio.create_task(
             await telegram_app.bot.send_message(
                 chat_id=payment.telegram_user_id,
                 text=message_text,
-            )
+                reply_markup=reply_markup,
             )
         except Exception as e:
             logger.error(f"⚠️ خطا در ارسال پیام تأیید پرداخت: {e}")

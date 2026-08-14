@@ -11,6 +11,7 @@ from telegram import (
 from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
+    CallbackQueryHandler,
     ContextTypes,
     MessageHandler,
     ConversationHandler,
@@ -656,6 +657,113 @@ async def select_payment_type(
         return PAY_RECEIPT
 
 
+async def complete_payment_callback(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+):
+    """ورود مستقیم به تکمیل پرداخت از طریق دکمه‌ی اینلاین (پس از تأیید بیعانه)."""
+    query = update.callback_query
+    await query.answer()
+
+    try:
+        participant_id = int(query.data.split(":", 1)[1])
+    except (ValueError, IndexError):
+        await query.message.reply_text(
+            "❌ لینک پرداخت نامعتبر است."
+        )
+        return ConversationHandler.END
+
+    telegram_user_id = update.effective_user.id
+
+    with Session(engine) as session:
+
+        participant = session.get(
+            Participant,
+            participant_id,
+        )
+
+        if not participant:
+            await query.message.reply_text(
+                "❌ ثبت‌نام شما یافت نشد."
+            )
+            return ConversationHandler.END
+
+        if participant.telegram_user_id != telegram_user_id:
+            await query.message.reply_text(
+                "❌ این لینک پرداخت متعلق به شما نیست."
+            )
+            return ConversationHandler.END
+
+        trip = session.get(
+            Trip,
+            participant.trip_id,
+        )
+
+        if not trip:
+            await query.message.reply_text(
+                "❌ این تور دیگر موجود نیست."
+            )
+            return ConversationHandler.END
+
+        # ---------------------------------------------------------------
+        # بررسی وضعیت پرداخت
+        # ---------------------------------------------------------------
+
+        if is_fully_paid(
+            participant.id,
+            trip.id,
+            trip.price,
+            session,
+        ):
+            await query.message.reply_text(
+                "💳 هزینه این تور به‌طور کامل پرداخت شده است."
+            )
+            return ConversationHandler.END
+
+        if has_pending(
+            participant.id,
+            trip.id,
+            session,
+        ):
+            await query.message.reply_text(
+                "فیش پرداخت شما در حال بررسی است. "
+                "پس از تعیین وضعیت، می‌توانید پرداخت بعدی را ثبت کنید."
+            )
+            return ConversationHandler.END
+
+        confirmed_total = get_confirmed_total(
+            participant.id,
+            trip.id,
+            session,
+        )
+
+        amount = calculate_full_amount(
+            trip.price,
+            confirmed_total,
+        )
+
+        trip_id = trip.id
+
+    # ---------------------------------------------------------------
+    # مقداردهی context و ورود مستقیم به مرحله‌ی فیش (پرداخت کامل)
+    # ---------------------------------------------------------------
+
+    context.user_data["payment_trip_id"] = trip_id
+    context.user_data["payment_participant_id"] = participant_id
+    context.user_data["payment_type"] = "full"
+    context.user_data["payment_expected_amount"] = amount
+
+    await query.message.reply_text(
+        f"💳 مبلغ قابل پرداخت:\n\n"
+        f"{amount:,.0f} تومان\n\n"
+        f"لطفاً مبلغ بالا را به حساب/کارت زیر واریز کنید:\n\n"
+        f"{PAYMENT_ACCOUNT_INFO}\n\n"
+        "پس از واریز، لطفاً تصویر فیش واریزی را ارسال کنید."
+    )
+
+    return PAY_RECEIPT
+
+
 # ===========================================================================
 # دریافت فیش پرداخت
 # ===========================================================================
@@ -1076,7 +1184,11 @@ def build_bot_app():
             CommandHandler(
                 "pay",
                 start_payment,
-            )
+            ),
+            CallbackQueryHandler(
+                complete_payment_callback,
+                pattern=r"^complete_payment:\d+$",
+            ),
         ],
 
         states={
