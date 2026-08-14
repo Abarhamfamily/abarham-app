@@ -289,13 +289,22 @@ def confirm_payment(payment_id: int):
             # ارسال پیام تأیید فیش به کاربر تلگرام
     if telegram_app is not None and payment.telegram_user_id:
         try:
+            if payment.payment_type == "deposit":
+                message_text = (
+                    "✅ بیعانه شما با موفقیت تأیید شد.\n\n"
+                    "برای نهایی شدن ثبت‌نام، لطفاً مبلغ باقی‌مانده را "
+                    "حداکثر تا یک هفته قبل از سفر پرداخت کنید."
+                )
+            else:
+                message_text = (
+                    "✅ پرداخت شما با موفقیت تأیید شد.\n\n"
+                    "ثبت‌نام شما در سیستم ابرهام نهایی شد."
+                )
+
             asyncio.create_task(
                 telegram_app.bot.send_message(
                     chat_id=payment.telegram_user_id,
-                    text=(
-                        "✅ فیش پرداخت شما با موفقیت تأیید شد.\n\n"
-                        "ثبت پرداخت شما در سیستم ابرهام ثبت شد."
-                    ),
+                    text=message_text,
                 )
             )
         except Exception as e:
