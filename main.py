@@ -268,7 +268,7 @@ def get_payments(status: Optional[str] = None):
 
 
 @app.post("/payments/{payment_id}/confirm")
-def confirm_payment(payment_id: int):
+async def confirm_payment(payment_id: int):
     with Session(engine) as session:
         payment = session.get(Payment, payment_id)
         if not payment:
@@ -302,10 +302,10 @@ def confirm_payment(payment_id: int):
                 )
 
             asyncio.create_task(
-                telegram_app.bot.send_message(
-                    chat_id=payment.telegram_user_id,
-                    text=message_text,
-                )
+            await telegram_app.bot.send_message(
+                chat_id=payment.telegram_user_id,
+                text=message_text,
+            )
             )
         except Exception as e:
             logger.error(f"⚠️ خطا در ارسال پیام تأیید پرداخت: {e}")
