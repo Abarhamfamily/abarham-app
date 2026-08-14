@@ -384,7 +384,10 @@ async def start_payment(
             if trip:
                 trips_map[
                     f"🏕 {trip.title} (کد {trip.id})"
-                ] = trip.id
+                ] = {
+                    "trip_id": trip.id,
+                    "participant_id": participant.id,
+                }
 
         if not trips_map:
             await update.message.reply_text(
@@ -434,26 +437,25 @@ async def select_payment_trip(
         )
         return PAY_TRIP_SELECT
 
-    trip_id = trips_map[selected_option]
-    telegram_user_id = update.effective_user.id
+    payment_info = trips_map[selected_option]
+    trip_id = payment_info["trip_id"]
+    participant_id = payment_info["participant_id"]
+
+    context.user_data["payment_trip_id"] = trip_id
+    context.user_data["payment_participant_id"] = participant_id
 
     with Session(engine) as session:
 
-        participant = session.exec(
-            select(Participant).where(
-                Participant.telegram_user_id == telegram_user_id,
-                Participant.trip_id == trip_id,
-            )
-        ).first()
+        participant = session.get(
+            Participant,
+            participant_id,
+        )
 
         if not participant:
             await update.message.reply_text(
                 "❌ ثبت‌نام شما برای این تور یافت نشد."
             )
             return ConversationHandler.END
-
-        context.user_data["payment_trip_id"] = trip_id
-        context.user_data["payment_participant_id"] = participant.id
 
         # ---------------------------------------------------------------
         # pending
