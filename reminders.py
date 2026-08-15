@@ -28,6 +28,7 @@ async def send_group_link_reminders(bot):
     with Session(engine) as session:
         trips = session.exec(
             select(Trip).where(
+                Trip.status == "active",
                 Trip.telegram_group_link.isnot(None),
                 Trip.date.isnot(None),
             )
@@ -123,10 +124,42 @@ async def send_group_link_reminders(bot):
                     )
 
 
+def mark_completed_trips() -> None:
+    """سفرهای فعالی که تاریخ برگزاری‌شان گذشته را completed می‌کند."""
+    now = datetime.now()
+
+    with Session(engine) as session:
+        trips = session.exec(
+            select(Trip).where(Trip.status == "active")
+        ).all()
+
+        changed = 0
+        for trip in trips:
+            if not trip.date:
+                continue
+            try:
+                trip_date = parse_jalali(trip.date)
+            except (ValueError, TypeError) as e:
+                logger.warning(
+                    f"⚠️ تاریخ نامعتبر تور {trip.id}: {trip.date} — {e}"
+                )
+                continue
+
+            # اگر تاریخ سفر قبل از امروز باشد → completed
+            if trip_date < now:
+                trip.status = "completed"
+                changed += 1
+
+        if changed:
+            session.commit()
+            logger.info(f"✅ {changed} سفر به‌عنوان برگزارشده علامت‌گذاری شد.")
+
+
 async def run_reminder_loop(bot):
     """لوپ اصلی Scheduler: بررسی فوری هنگام startup + تکرار هر ساعت."""
     logger.info("🔄 Scheduler: شروع بررسی فوری (catch-up)...")
     try:
+        mark_completed_trips()
         await send_group_link_reminders(bot)
     except Exception as e:
         logger.error(f"⚠️ خطا در بررسی اولیه: {e}", exc_info=True)
@@ -135,6 +168,7 @@ async def run_reminder_loop(bot):
         await asyncio.sleep(3600)
         logger.info("🔄 Scheduler: بررسی دورهای...")
         try:
+            mark_completed_trips()
             await send_group_link_reminders(bot)
         except Exception as e:
             logger.error(f"⚠️ خطا در بررسی دورهای: {e}", exc_info=True)

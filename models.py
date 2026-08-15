@@ -17,6 +17,7 @@ class Trip(SQLModel, table=True):
     price: float = 0.0
     capacity: int = 0                   # ظرفیت تور (۰ یعنی نامحدود)
     telegram_group_link: Optional[str] = None   # لینک گروه هماهنگی تلگرام سفر
+    status: str = "active"              # "active" | "completed"
 
 
 # ---------------------------------------------------------------------------

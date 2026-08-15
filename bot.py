@@ -61,7 +61,9 @@ async def start_registration(
     context: ContextTypes.DEFAULT_TYPE
 ):
     with Session(engine) as session:
-        trips = session.exec(select(Trip)).all()
+        trips = session.exec(
+            select(Trip).where(Trip.status == "active")
+        ).all()
 
     if not trips:
         await update.message.reply_text(
@@ -382,7 +384,8 @@ async def start_payment(
                 participant.trip_id
             )
 
-            if trip:
+            # سفرهای برگزارشده در /pay نمایش داده نشوند
+            if trip and trip.status == "active":
                 trips_map[
                     f"🏕 {trip.title} (کد {trip.id})"
                 ] = {
@@ -487,6 +490,13 @@ async def select_payment_trip(
         if not trip:
             await update.message.reply_text(
                 "❌ این تور دیگر موجود نیست.",
+                reply_markup=ReplyKeyboardRemove(),
+            )
+            return ConversationHandler.END
+
+        if trip.status == "completed":
+            await update.message.reply_text(
+                "❌ این سفر برگزار شده و امکان پرداخت برای آن وجود ندارد.",
                 reply_markup=ReplyKeyboardRemove(),
             )
             return ConversationHandler.END

@@ -363,9 +363,9 @@
         </div>
     </div>
 
-    <!-- جدول تورها -->
+    <!-- جدول تورهای فعال -->
     <div class="card full-width" style="margin-bottom: 15px;">
-        <h2>گزارش مالی تورها</h2>
+        <h2>📌 سفرهای فعال</h2>
         <div class="table-responsive">
             <table>
                 <thead>
@@ -381,6 +381,25 @@
                     </tr>
                 </thead>
                 <tbody id="tripsTable"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- جدول سفرهای برگزارشده -->
+    <div class="card full-width" style="margin-bottom: 15px;">
+        <h2>🏁 سفرهای برگزارشده</h2>
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>عنوان تور</th>
+                        <th>مقصد</th>
+                        <th>تاریخ برگزاری</th>
+                        <th>تعداد مسافر</th>
+                        <th>گزارش</th>
+                    </tr>
+                </thead>
+                <tbody id="completedTripsTable"></tbody>
             </table>
         </div>
     </div>
@@ -769,22 +788,28 @@
 
     function renderTrips() {
         const tripsTable = document.getElementById('tripsTable');
+        const completedTripsTable = document.getElementById('completedTripsTable');
         const tripSelect = document.getElementById('p_trip_id');
         if (!tripsTable) return;
 
         const currentSelection = tripSelect ? tripSelect.value : '';
 
         tripsTable.innerHTML = '';
+        if (completedTripsTable) completedTripsTable.innerHTML = '';
         if (tripSelect) tripSelect.innerHTML = '<option value="">-- انتخاب تور --</option>';
 
-        allTrips.forEach((t, index) => {
+        const activeTrips = allTrips.filter(t => (t.status || 'active') === 'active');
+        const completedTrips = allTrips.filter(t => (t.status || 'active') === 'completed');
+
+        // ردیف سفرهای فعال
+        activeTrips.forEach((t, index) => {
             const filteredParts = allParticipants.filter(p => p.trip_id === t.id);
             const totalCollected = filteredParts.reduce((sum, p) => sum + (p.paid_amount || 0), 0);
             const capacityText = t.capacity ? `${filteredParts.length} / ${t.capacity}` : `${filteredParts.length} (نامحدود)`;
 
             tripsTable.innerHTML += `
                 <tr>
-                <td>${index + 1}</td>
+                    <td>${index + 1}</td>
                     <td><strong>${t.title}</strong></td>
                     <td>${t.destination || '-'}</td>
                     <td>${t.date || '-'}</td>
@@ -800,6 +825,7 @@
                 </tr>
             `;
 
+            // فقط سفرهای فعال درانتخاب‌گر ثبت‌نام مسافر ظاهر شوند
             if (tripSelect) {
                 const opt = document.createElement('option');
                 opt.value = t.id;
@@ -807,6 +833,24 @@
                 tripSelect.appendChild(opt);
             }
         });
+
+        // ردیف سفرهای برگزارشده — فقط مشاهده گزارش (بدون ویرایش/حذف/ثبت‌نام)
+        if (completedTripsTable) {
+            completedTrips.forEach((t) => {
+                const filteredParts = allParticipants.filter(p => p.trip_id === t.id);
+                completedTripsTable.innerHTML += `
+                    <tr>
+                        <td><strong>${t.title}</strong></td>
+                        <td>${t.destination || '-'}</td>
+                        <td>${t.date || '-'}</td>
+                        <td>${filteredParts.length} نفر</td>
+                        <td>
+                            <button class="btn-action btn-view" onclick="showTripParticipants(${t.id})">👥 گزارش شرکت‌کنندگان</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
 
         if (tripSelect && currentSelection) tripSelect.value = currentSelection;
     }

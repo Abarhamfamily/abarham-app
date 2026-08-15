@@ -58,3 +58,25 @@ def run_migrations() -> None:
             print("✅ Migration: telegram_group_link به جدول trip اضافه شد.")
         else:
             print("ℹ️ Migration: telegram_group_link از قبل وجود دارد.")
+
+    # -----------------------------------------------------------------------
+    # status روی جدول trip
+    # -----------------------------------------------------------------------
+    if "trip" in inspector.get_table_names():
+        trip_columns = {
+            column["name"]
+            for column in inspector.get_columns("trip")
+        }
+
+        if "status" not in trip_columns:
+            with engine.begin() as connection:
+                connection.execute(
+                    text(
+                        "ALTER TABLE trip ADD COLUMN status VARCHAR "
+                        "NOT NULL DEFAULT 'active'"
+                    )
+                )
+
+            print("✅ Migration: status به جدول trip اضافه شد (پیش‌فرض active).")
+        else:
+            print("ℹ️ Migration: status از قبل وجود دارد.")
