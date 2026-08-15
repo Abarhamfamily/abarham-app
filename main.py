@@ -11,7 +11,13 @@ from fastapi.responses import HTMLResponse, FileResponse, Response
 from sqlmodel import Session, select
 
 from models import engine, create_db_and_tables, Trip, Participant, Payment
-from payment import transition_status, get_receipt_path
+from payment import (
+    transition_status,
+    get_receipt_path,
+    get_confirmed_total,
+    is_fully_paid,
+    has_pending,
+)
 from bot import start_bot
 from reminders import run_reminder_loop
 from telegram import InlineKeyboardMarkup, InlineKeyboardButton
@@ -167,16 +173,65 @@ def get_participants():
         return session.exec(select(Participant)).all()
 
 
-@app.get("/trips/{trip_id}/participants", response_model=List[Participant])
+@app.get("/trips/{trip_id}/participants")
 def get_trip_participants(trip_id: int):
-    """دریافت لیست شرکت‌کنندگان یک تور خاص"""
+    """دریافت شرکت‌کنندگان یک تور + اطلاعات واقعی پرداخت از جدول Payment."""
     with Session(engine) as session:
         trip = session.get(Trip, trip_id)
         if not trip:
             raise HTTPException(404, "تور یافت نشد")
-        return session.exec(
+
+        participants = session.exec(
             select(Participant).where(Participant.trip_id == trip_id)
         ).all()
+
+        result = []
+        for participant in participants:
+            # مبلغ واقعی تأییدشده از جدول Payment
+            confirmed_total = get_confirmed_total(
+                participant.id,
+                trip_id,
+                session,
+            )
+            remaining_amount = max(
+                round(trip.price - confirmed_total, 2),
+                0.0,
+            )
+            has_pending_flag = has_pending(
+                participant.id,
+                trip_id,
+                session,
+            )
+            fully_paid = is_fully_paid(
+                participant.id,
+                trip_id,
+                trip.price,
+                session,
+            )
+
+            # وضعیت واقعی پرداخت
+            if has_pending_flag:
+                status_text = "فیش در انتظار بررسی"
+            elif fully_paid:
+                status_text = "پرداخت کامل تایید شده"
+            elif confirmed_total > 0:
+                status_text = "بیعانه تایید شده"
+            else:
+                status_text = "پرداخت نشده"
+
+            result.append({
+                "id": participant.id,
+                "full_name": participant.full_name,
+                "national_id": participant.national_id,
+                "phone_number": participant.phone_number,
+                "confirmed_amount": confirmed_total,
+                "remaining_amount": remaining_amount,
+                "has_pending": has_pending_flag,
+                "is_fully_paid": fully_paid,
+                "payment_status": status_text,
+            })
+
+        return result
 
 
 @app.post("/participants", response_model=Participant)

@@ -466,6 +466,7 @@
                         <th>شماره موبایل</th>
                         <th>وضعیت پرداخت</th>
                         <th>مبلغ دریافتی</th>
+                        <th>مبلغ باقی‌مانده</th>
                     </tr>
                 </thead>
                 <tbody id="tripParticipantsTable"></tbody>
@@ -1047,14 +1048,22 @@
             statusEl.textContent = '';
 
             participants.forEach((p, index) => {
-                const badgeClass = p.payment_status === 'پرداخت کامل' ? 'badge-full' : 'badge-deposit';
+                // وضعیت واقعی پرداخت
+                let badgeClass = 'badge-deposit';
+                if (p.payment_status === 'پرداخت کامل تایید شده') badgeClass = 'badge-full';
+                else if (p.payment_status === 'فیش در انتظار بررسی') badgeClass = 'badge-pending';
+                else if (p.payment_status === 'بیعانه تایید شده') badgeClass = 'badge-deposit';
+                else if (p.payment_status === 'پرداخت نشده') badgeClass = 'badge-deposit';
+
                 table.innerHTML += `
                     <tr>
+                        <td>${index + 1}</td>
                         <td><strong>${p.full_name}</strong></td>
                         <td>${p.national_id || '-'}</td>
                         <td>${p.phone_number || '-'}</td>
-                        <td><span class="badge ${badgeClass}">${p.payment_status || '-'}</span></td>
-                        <td>${(p.paid_amount || 0).toLocaleString()} تومان</td>
+                        <td><span class="badge ${badgeClass}">${p.payment_status}</span></td>
+                        <td>${(p.confirmed_amount || 0).toLocaleString()} تومان</td>
+                        <td>${(p.remaining_amount || 0).toLocaleString()} تومان</td>
                     </tr>
                 `;
             });
