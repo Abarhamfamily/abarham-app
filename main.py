@@ -19,7 +19,7 @@ from payment import (
     has_pending,
 )
 from bot import start_bot
-from reminders import run_reminder_loop
+from reminders import run_reminder_loop, mark_completed_trips
 from telegram import InlineKeyboardMarkup, InlineKeyboardButton
 
 logging.basicConfig(level=logging.INFO)
@@ -114,6 +114,8 @@ def read_root():
 @app.get("/trips", response_model=List[Trip])
 @app.get("/trips/", response_model=List[Trip])
 def get_trips():
+    # علامت‌گذاری خودکار سفرهای تاریخ‌گذشته (مقاوم در برابر عدم اجرای Scheduler)
+    mark_completed_trips()
     with Session(engine) as session:
         return session.exec(select(Trip)).all()
 
