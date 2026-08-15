@@ -16,10 +16,26 @@ _FARSI_TO_WEST = str.maketrans("۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩", "0123
 
 
 def parse_jalali(date_str: str) -> datetime:
-    """تبدیل تاریخ شمسی (مثلاً ۱۴۰۵/۰۵/۲۱) به datetime میلادی."""
+    """تبدیل تاریخ شمسی با پشتیبانی از YYYY/MM/DD و DD/MM/YYYY."""
     cleaned = date_str.strip().translate(_FARSI_TO_WEST)
-    return jdatetime.datetime.strptime(cleaned, "%Y/%m/%d").togregorian()
+    parts = [p.strip() for p in cleaned.split("/")]
 
+    if len(parts) != 3:
+        raise ValueError(f"فرمت تاریخ نامعتبر: {date_str}")
+
+    if len(parts[0]) == 4:
+        # YYYY/MM/DD
+        year, month, day = parts
+    elif len(parts[2]) == 4:
+        # DD/MM/YYYY
+        day, month, year = parts
+    else:
+        raise ValueError(f"سال در تاریخ یافت نشد: {date_str}")
+
+    jd = jdatetime.date(int(year), int(month), int(day))
+    g = jd.togregorian()
+
+    return datetime(g.year, g.month, g.day)
 
 async def send_group_link_reminders(bot):
     """ارسال لینک گروه هماهنگی ۴ روز قبل از سفر به مسافران واجدشرایط."""
