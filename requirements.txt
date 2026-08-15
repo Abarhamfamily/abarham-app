@@ -3,3 +3,4 @@ uvicorn[standard]
 sqlmodel
 python-telegram-bot>=20.0
 psycopg2-binary
+jdatetime

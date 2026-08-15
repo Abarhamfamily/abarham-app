@@ -13,13 +13,15 @@ from sqlmodel import Session, select
 from models import engine, create_db_and_tables, Trip, Participant, Payment
 from payment import transition_status, get_receipt_path
 from bot import start_bot
+from reminders import run_reminder_loop
 from telegram import InlineKeyboardMarkup, InlineKeyboardButton
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("abarham")
 
-# نگه‌داری رفرنس به اپ تلگرام برای shutdown تمیز
+# نگه‌داری رفرنس به اپ تلگرام و تسک یادآوری برای shutdown تمیز
 telegram_app = None
+reminder_task = None
 
 
 @asynccontextmanager
@@ -36,11 +38,22 @@ async def lifespan(app: FastAPI):
     try:
         telegram_app = await start_bot()
         logger.info("🤖 وب‌سرور و ربات تلگرام فعال شدند.")
+        # شروع Scheduler یادآوری
+        global reminder_task
+        reminder_task = asyncio.create_task(
+            run_reminder_loop(telegram_app.bot)
+        )
+        logger.info("🔄 Scheduler یادآوری فعال شد.")
     except Exception as e:
         telegram_app = None
         logger.error(f"⚠️ اجرای ربات تلگرام با خطا مواجه شد: {e}")
 
     yield
+
+    # خاموش کردن Scheduler یادآوری
+    if reminder_task is not None:
+        reminder_task.cancel()
+        logger.info("🔄 Scheduler یادآوری متوقف شد.")
 
     # خاموش کردن تمیز ربات
     if telegram_app is not None:

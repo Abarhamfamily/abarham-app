@@ -314,6 +314,10 @@
                     <label>ظرفیت (۰ = نامحدود)</label>
                     <input type="number" id="t_capacity" value="0" min="0">
                 </div>
+                <div class="form-group">
+                    <label>لینک گروه هماهنگی تلگرام سفر</label>
+                    <input type="text" id="t_group" placeholder="https://t.me/...">
+                </div>
                 <button type="submit" class="btn" id="t_btn">ثبت تور</button>
                 <button type="button" class="btn-cancel-edit" id="t_cancel_btn" onclick="resetTripForm()">لغو ویرایش</button>
             </form>
@@ -540,7 +544,8 @@
             destination: document.getElementById('t_dest').value,
             date: document.getElementById('t_date').value,
             price: parseFloat(document.getElementById('t_price').value) || 0,
-            capacity: parseInt(document.getElementById('t_capacity').value) || 0
+            capacity: parseInt(document.getElementById('t_capacity').value) || 0,
+            telegram_group_link: document.getElementById('t_group').value || null
         };
 
         const method = tripId ? 'PUT' : 'POST';
@@ -665,6 +670,7 @@
         document.getElementById('t_date').value = trip.date || '';
         document.getElementById('t_price').value = trip.price || 0;
         document.getElementById('t_capacity').value = trip.capacity || 0;
+        document.getElementById('t_group').value = trip.telegram_group_link || '';
 
         document.getElementById('tripFormTitle').textContent = '۱. ویرایش تور';
         document.getElementById('t_btn').textContent = 'ذخیره تغییرات';
