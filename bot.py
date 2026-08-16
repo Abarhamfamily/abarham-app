@@ -36,9 +36,9 @@ logger = logging.getLogger("abarham.bot")
 # وضعیت‌های Conversation
 # ---------------------------------------------------------------------------
 
-TRIP_SELECT, NAME, NATIONAL_ID, PHONE = range(4)
+TRIP_SELECT, COUNT, NAME, NATIONAL_ID, PHONE = range(5)
 
-PAY_TRIP_SELECT, PAY_TYPE_SELECT, PAY_RECEIPT = range(4, 7)
+PAY_TRIP_SELECT, PAY_TYPE_SELECT, PAY_RECEIPT = range(5, 8)
 
 
 # ---------------------------------------------------------------------------
@@ -60,6 +60,15 @@ async def start_registration(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE
 ):
+    # پاک‌سازی اطلاعات ثبت‌نام قبلی (در صورت وجود)
+    for key in ["reg_count", "reg_pending", "reg_current", "reg_index"]:
+        context.user_data.pop(key, None)
+
+    await update.message.reply_text(
+        "👋 به ابرهام خوش آمدید!\n\n"
+        "شما می‌توانید از اینجا برای تورهای فعال ثبت‌نام کرده و پرداخت را انجام دهید."
+    )
+
     with Session(engine) as session:
         trips = session.exec(
             select(Trip).where(Trip.status == "active")
@@ -113,7 +122,67 @@ async def select_trip(
     context.user_data["selected_trip_title"] = selected_option
 
     await update.message.reply_text(
-        "لطفاً نام و نام خانوادگی خود را وارد کنید:",
+        "چند نفر می‌خواهید برای این تور ثبت‌نام کنید؟\n\n"
+        "مثلاً برای ۲ نفر عدد ۲ را ارسال کنید.",
+        reply_markup=ReplyKeyboardRemove(),
+    )
+
+    return COUNT
+
+
+async def get_count(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+):
+    raw = update.message.text.strip()
+
+    if not raw.isdigit():
+        await update.message.reply_text(
+            "لطفاً تعداد نفرات را به‌صورت عدد وارد کنید (مثلاً ۲):"
+        )
+        return COUNT
+
+    count = int(raw)
+
+    if count < 1:
+        await update.message.reply_text(
+            "تعداد نفرات باید حداقل ۱ باشد. لطفاً دوباره وارد کنید:"
+        )
+        return COUNT
+
+    if count > 10:
+        await update.message.reply_text(
+            "برای ثبت‌نام بیشتر از ۱۰ نفر، لطفاً با پشتیبانی تماس بگیرید.\n"
+            "حداکثر ۱۰ نفر در یک بار ثبت‌نام امکان‌پذیر است."
+        )
+        return COUNT
+
+    trip_id = context.user_data.get("trip_id")
+
+    with Session(engine) as session:
+        trip = session.get(Trip, trip_id)
+        if trip and trip.capacity:
+            current_count = len(
+                session.exec(
+                    select(Participant).where(Participant.trip_id == trip_id)
+                ).all()
+            )
+            available = trip.capacity - current_count
+            if count > available:
+                await update.message.reply_text(
+                    f"❌ ظرفیت این تور کافی نیست؛ فقط {available} نفر دیگر "
+                    "ظرفیت باقی مانده است."
+                )
+                return COUNT
+
+    context.user_data["reg_count"] = count
+    context.user_data["reg_pending"] = []
+    context.user_data["reg_current"] = {}
+    context.user_data["reg_index"] = 0
+
+    await update.message.reply_text(
+        f"تعداد {count} نفر برای ثبت‌نام انتخاب شد.\n\n"
+        "لطفاً نام و نام خانوادگی نفر ۱ را وارد کنید:",
         reply_markup=ReplyKeyboardRemove(),
     )
 
@@ -132,10 +201,12 @@ async def get_name(
         )
         return NAME
 
-    context.user_data["full_name"] = full_name
+    context.user_data.setdefault("reg_current", {})["full_name"] = full_name
+
+    person_label = context.user_data.get("reg_index", 0) + 1
 
     await update.message.reply_text(
-        "لطفاً کد ملی خود را وارد کنید:"
+        f"کد ملی {person_label} را وارد کنید:"
     )
 
     return NATIONAL_ID
@@ -155,7 +226,15 @@ async def get_national_id(
 
     trip_id = context.user_data.get("trip_id")
 
-    # جلوگیری از ثبت‌نام تکراری
+    # جلوگیری از ثبت کد ملی تکراری در همان دسته (چندنفره)
+    reg_pending = context.user_data.get("reg_pending", [])
+    if any(r.get("national_id") == national_id for r in reg_pending):
+        await update.message.reply_text(
+            "❌ این کد ملی قبلاً در همین لیست ثبت‌نام وارد شده است."
+        )
+        return NATIONAL_ID
+
+    # جلوگیری از ثبت‌نام تکراری نسبت به دیتابیس
     with Session(engine) as session:
         existing = session.exec(
             select(Participant).where(
@@ -166,12 +245,14 @@ async def get_national_id(
 
     if existing:
         await update.message.reply_text(
-            "❌ شما قبلاً با این کد ملی برای این تور ثبت‌نام کرده‌اید.",
+            "❌ این کد ملی قبلاً برای این تور ثبت‌نام شده است.",
             reply_markup=ReplyKeyboardRemove(),
         )
         return ConversationHandler.END
 
-    context.user_data["national_id"] = national_id
+    context.user_data.setdefault("reg_current", {})["national_id"] = national_id
+
+    person_label = context.user_data.get("reg_index", 0) + 1
 
     phone_keyboard = [
         [
@@ -189,7 +270,8 @@ async def get_national_id(
     )
 
     await update.message.reply_text(
-        "لطفاً شماره تماس خود را وارد کنید یا از دکمه زیر جهت ارسال سریع استفاده کنید:",
+        f"شماره تماس نفر {person_label} را وارد کنید "
+        "یا از دکمه زیر جهت ارسال سریع استفاده کنید:",
         reply_markup=reply_markup,
     )
 
@@ -207,14 +289,46 @@ async def get_phone_and_save(update: Update, context: ContextTypes.DEFAULT_TYPE)
         else update.message.text.strip()
     )
 
-    context.user_data["phone_number"] = phone_number
+    if not phone_number:
+        await update.message.reply_text("لطفاً شماره تماس خود را وارد کنید:")
+        return PHONE
 
+    reg_current = context.user_data.setdefault("reg_current", {})
+    reg_current["phone_number"] = phone_number
+
+    reg_pending = context.user_data.setdefault("reg_pending", [])
+    reg_pending.append(reg_current)
+
+    reg_count = context.user_data.get("reg_count", 1)
+    new_index = context.user_data.get("reg_index", 0) + 1
+    context.user_data["reg_index"] = new_index
+
+    if new_index < reg_count:
+        # هنوز نفرات دیگری باقی مانده‌اند → دریافت اطلاعات نفر بعد
+        context.user_data["reg_current"] = {}
+        next_label = new_index + 1
+
+        await update.message.reply_text(
+            f"✅ اطلاعات نفر {new_index} از {reg_count} ثبت شد.\n\n"
+            f"لطفاً نام و نام خانوادگی نفر {next_label} را وارد کنید:",
+            reply_markup=ReplyKeyboardRemove(),
+        )
+
+        return NAME
+
+    # همه‌ی نفرات جمع‌آوری شدند → ثبت نهایی و ورود به مرحله پرداخت
+    return await _finalize_registration(update, context)
+
+
+async def _finalize_registration(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+):
+    reg_pending = context.user_data.get("reg_pending", [])
+    telegram_user_id = update.effective_user.id
     trip_id = context.user_data.get("trip_id")
 
     try:
-        # ---------------------------------------------------------
-        # بررسی و ذخیره اطلاعات در دیتابیس
-        # ---------------------------------------------------------
         with Session(engine) as session:
             trip = session.get(Trip, trip_id)
 
@@ -225,15 +339,10 @@ async def get_phone_and_save(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 )
                 return ConversationHandler.END
 
-            # مهم:
-            # اطلاعات موردنیاز تور را قبل از بسته‌شدن Session
-            # در متغیرهای معمولی ذخیره می‌کنیم.
             trip_price = trip.price
             trip_title = trip.title
 
-            # -----------------------------------------------------
-            # بررسی ظرفیت تور
-            # -----------------------------------------------------
+            # ظرفیت تور برای کل تعداد نفرات
             if trip.capacity:
                 current_count = len(
                     session.exec(
@@ -243,100 +352,90 @@ async def get_phone_and_save(update: Update, context: ContextTypes.DEFAULT_TYPE)
                     ).all()
                 )
 
-                if current_count >= trip.capacity:
+                if current_count + len(reg_pending) > trip.capacity:
                     await update.message.reply_text(
-                        "❌ ظرفیت این تور تکمیل شده است.",
+                        "❌ ظرفیت این تور برای این تعداد نفر تکمیل شده است.",
                         reply_markup=ReplyKeyboardRemove()
                     )
                     return ConversationHandler.END
 
-            # -----------------------------------------------------
-            # جلوگیری از ثبت‌نام تکراری
-            # -----------------------------------------------------
-            existing = session.exec(
-                select(Participant).where(
-                    Participant.national_id == context.user_data["national_id"],
-                    Participant.trip_id == trip_id
+            # جلوگیری از ثبت‌نام تکراری در دیتابیس
+            for reg in reg_pending:
+                existing = session.exec(
+                    select(Participant).where(
+                        Participant.national_id == reg["national_id"],
+                        Participant.trip_id == trip_id
+                    )
+                ).first()
+
+                if existing:
+                    await update.message.reply_text(
+                        f"❌ کد ملی {reg['national_id']} قبلاً برای این تور "
+                        "ثبت‌نام شده است.",
+                        reply_markup=ReplyKeyboardRemove()
+                    )
+                    return ConversationHandler.END
+
+            # ساخت شرکت‌کننده‌ها
+            participant_ids = []
+            for reg in reg_pending:
+                new_participant = Participant(
+                    full_name=reg["full_name"],
+                    national_id=reg["national_id"],
+                    phone_number=reg["phone_number"],
+                    trip_id=trip_id,
+                    telegram_user_id=telegram_user_id
                 )
-            ).first()
+                session.add(new_participant)
+                session.flush()
+                participant_ids.append(new_participant.id)
 
-            if existing:
-                await update.message.reply_text(
-                    "❌ شما قبلاً برای این تور ثبت‌نام کرده‌اید.",
-                    reply_markup=ReplyKeyboardRemove()
-                )
-                return ConversationHandler.END
-
-            # -----------------------------------------------------
-            # ساخت شرکت‌کننده
-            # -----------------------------------------------------
-            new_participant = Participant(
-                full_name=context.user_data["full_name"],
-                national_id=context.user_data["national_id"],
-                phone_number=context.user_data["phone_number"],
-                trip_id=trip_id,
-                telegram_user_id=update.effective_user.id
-            )
-
-            session.add(new_participant)
             session.commit()
-            session.refresh(new_participant)
 
-            # ذخیره شناسه شرکت‌کننده
-            participant_id = new_participant.id
-
-        # ---------------------------------------------------------
-        # از اینجا Session بسته شده است.
-        # بنابراین فقط از متغیرهای معمولی استفاده می‌کنیم.
-        # ---------------------------------------------------------
+        count = len(participant_ids)
 
         context.user_data["payment_trip_id"] = trip_id
-        context.user_data["payment_participant_id"] = participant_id
-
-        # ---------------------------------------------------------
-        # محاسبه مبلغ پرداخت
-        # ---------------------------------------------------------
-
-        deposit_amount = calculate_deposit(trip_price)
-
-        # در این مرحله هنوز هیچ پرداخت تأییدشده‌ای وجود ندارد.
-        full_amount = calculate_full_amount(
-            trip_price,
-            0
+        context.user_data["payment_participant_ids"] = participant_ids
+        context.user_data["payment_participant_id"] = participant_ids[0]
+        context.user_data["payment_per_person_deposit"] = calculate_deposit(
+            trip_price
+        )
+        context.user_data["payment_per_person_full"] = calculate_full_amount(
+            trip_price, 0
         )
 
-        # ---------------------------------------------------------
-        # ساخت کیبورد انتخاب نوع پرداخت
-        # ---------------------------------------------------------
+        # مبلغ کل = مبلغِ هر نفر × تعداد نفرات
+        deposit_total = round(
+            context.user_data["payment_per_person_deposit"] * count, 2
+        )
+        full_total = round(
+            context.user_data["payment_per_person_full"] * count, 2
+        )
 
+        people_suffix = f" ({count} نفر)" if count > 1 else ""
         keyboard = [
-            [f"💰 پرداخت بیعانه — {deposit_amount:,.0f} تومان"],
-            [f"💵 پرداخت کامل — {full_amount:,.0f} تومان"],
+            [f"💰 پرداخت بیعانه — {deposit_total:,.0f} تومان{people_suffix}"],
+            [f"💵 پرداخت کامل — {full_total:,.0f} تومان{people_suffix}"],
         ]
-
         reply_markup = ReplyKeyboardMarkup(
-            keyboard,
-            one_time_keyboard=True,
-            resize_keyboard=True
+            keyboard, one_time_keyboard=True, resize_keyboard=True
         )
 
-        # ---------------------------------------------------------
-        # اعلام ثبت‌نام و ورود مستقیم به مرحله پرداخت
-        # ---------------------------------------------------------
+        summary = "\n".join(
+            f"• {reg['full_name']} — {reg['national_id']}"
+            for reg in reg_pending
+        )
 
         await update.message.reply_text(
             "✅ اطلاعات شما با موفقیت دریافت شد\n\n"
             f"🏕 تور: {trip_title}\n"
-            f"👤 نام: {context.user_data['full_name']}\n"
-            f"🆔 کد ملی: {context.user_data['national_id']}\n"
-            f"📞 شماره تماس: {context.user_data['phone_number']}\n\n"
+            f"👥 تعداد نفرات: {count}\n"
+            f"{summary or ''}\n\n"
             "💳 حالا نوع پرداخت را انتخاب کنید:",
             reply_markup=reply_markup
         )
 
-        # بسیار مهم:
-        # Conversation اصلی از PHONE مستقیماً
-        # وارد مرحله انتخاب پرداخت می‌شود.
+        # از PHONE مستقیماً وارد مرحله انتخاب پرداخت می‌شود.
         return PAY_TYPE_SELECT
 
     except Exception as e:
@@ -615,45 +714,89 @@ async def select_payment_type(
         "payment_participant_id"
     )
 
-    with Session(engine) as session:
+    participant_ids = context.user_data.get(
+        "payment_participant_ids"
+    )
 
-        trip = session.get(
-            Trip,
-            trip_id,
-        )
+    if participant_ids:
+        # مسیر ثبت‌نام (تک‌نفره یا چندنفره): مبلغ هر نفر × تعداد نفرات
+        count = len(participant_ids)
 
-        if not trip:
-            await update.message.reply_text(
-                "❌ این تور دیگر موجود نیست.",
-                reply_markup=ReplyKeyboardRemove(),
+        with Session(engine) as session:
+
+            trip = session.get(
+                Trip,
+                trip_id,
             )
 
-            return ConversationHandler.END
+            if not trip:
+                await update.message.reply_text(
+                    "❌ این تور دیگر موجود نیست.",
+                    reply_markup=ReplyKeyboardRemove(),
+                )
 
-        confirmed_total = get_confirmed_total(
-            participant_id,
-            trip_id,
-            session,
-        )
+                return ConversationHandler.END
 
-        # ---------------------------------------------------------------
-        # محاسبه مبلغ از Backend
-        # ---------------------------------------------------------------
+            if payment_type == "deposit":
+                per_person = context.user_data.get(
+                    "payment_per_person_deposit"
+                )
 
-        if payment_type == "deposit":
-            amount = calculate_deposit(
-                trip.price
-            )
+            else:
+                per_person = context.user_data.get(
+                    "payment_per_person_full"
+                )
 
-        else:
-            amount = calculate_full_amount(
-                trip.price,
-                confirmed_total,
-            )
+        amount = round(per_person * count, 2)
+
+        # مبلغِ «هر نفر» برای ساخت ردیف‌های جداگانه Payment
+        context.user_data["payment_unit_amount"] = per_person
 
         context.user_data[
             "payment_expected_amount"
         ] = amount
+
+    else:
+        # مسیر تک‌نفره (پرداخت برای کاربر ثبت‌نام‌شده قبلی)
+        with Session(engine) as session:
+
+            trip = session.get(
+                Trip,
+                trip_id,
+            )
+
+            if not trip:
+                await update.message.reply_text(
+                    "❌ این تور دیگر موجود نیست.",
+                    reply_markup=ReplyKeyboardRemove(),
+                )
+
+                return ConversationHandler.END
+
+            confirmed_total = get_confirmed_total(
+                participant_id,
+                trip_id,
+                session,
+            )
+
+            # ---------------------------------------------------
+            # محاسبه مبلغ از Backend
+            # ---------------------------------------------------
+
+            if payment_type == "deposit":
+                amount = calculate_deposit(
+                    trip.price
+                )
+
+            else:
+                amount = calculate_full_amount(
+                    trip.price,
+                    confirmed_total,
+                )
+
+            context.user_data[
+                "payment_expected_amount"
+            ] = amount
 
         await update.message.reply_text(
             f"💳 مبلغ قابل پرداخت:\n\n"
@@ -665,6 +808,17 @@ async def select_payment_type(
         )
 
         return PAY_RECEIPT
+
+    await update.message.reply_text(
+        f"💳 مبلغ قابل پرداخت:\n\n"
+        f"{amount:,.0f} تومان\n\n"
+        f"لطفاً مبلغ بالا را به حساب/کارت زیر واریز کنید:\n\n"
+        f"{PAYMENT_ACCOUNT_INFO}\n\n"
+        "پس از واریز، لطفاً تصویر فیش واریزی را ارسال کنید.",
+        reply_markup=ReplyKeyboardRemove(),
+    )
+
+    return PAY_RECEIPT
 
 
 async def complete_payment_callback(
@@ -798,6 +952,22 @@ async def receive_payment_receipt(
     )
 
     telegram_user_id = update.effective_user.id
+
+    # -----------------------------------------------------------------------
+    # پرداخت چندنفره (ثبت‌نام گروهی)
+    # برای هر نفر یک ردیف Payment ساخته می‌شود.
+    # مسیر تک‌نفره (فردِ قبلاً ثبت‌نام‌شده) در پایین کاملاً دست‌نخورده می‌ماند.
+    # -----------------------------------------------------------------------
+
+    if context.user_data.get("payment_participant_ids"):
+        return await _receive_batch_payment_receipt(
+            update,
+            context,
+            photo,
+            trip_id,
+            payment_type,
+            telegram_user_id,
+        )
 
     # -----------------------------------------------------------------------
     # Validationهای Backend
@@ -1030,6 +1200,179 @@ async def receive_payment_receipt(
 
 
 # ===========================================================================
+# دریافت فیش پرداخت — حالت چندنفره
+# ===========================================================================
+
+async def _receive_batch_payment_receipt(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+    photo,
+    trip_id,
+    payment_type,
+    telegram_user_id,
+):
+    """برای هر نفر از ثبت‌نام گروهی یک ردیف Payment (pending_review) می‌سازد.
+
+    از همین مسیر، ثبت‌نام تک‌نفره نیز عبور می‌کند (لیستِ یک‌عضوی)؛ در نتیجه
+    رفتار تک‌نفره هم دقیقاً حفظ می‌شود و مسیرِ «پرداخت کاربر قبلی» دست نمی‌خورد.
+    """
+    participant_ids = context.user_data.get("payment_participant_ids", [])
+    expected_amount = context.user_data.get("payment_unit_amount")
+
+    if not participant_ids or expected_amount is None:
+        await update.message.reply_text(
+            "❌ اطلاعات پرداخت ناقص است. لطفاً دوباره تلاش کنید.",
+            reply_markup=ReplyKeyboardRemove(),
+        )
+        return ConversationHandler.END
+
+    # بررسی وجود تور
+    with Session(engine) as session:
+        trip = session.get(Trip, trip_id)
+
+        if not trip:
+            await update.message.reply_text(
+                "❌ این تور دیگر موجود نیست.",
+                reply_markup=ReplyKeyboardRemove(),
+            )
+            return ConversationHandler.END
+
+    # -------------------------------------------------------------------
+    # دانلود فایل تلگرام
+    # -------------------------------------------------------------------
+
+    try:
+        file = await photo.get_file()
+
+        file_bytes = await file.download_as_bytearray()
+
+        file_id = photo.file_id
+        file_unique_id = photo.file_unique_id
+
+    except Exception as e:
+        logger.error(
+            f"خطا در دانلود فیش: {e}",
+            exc_info=True,
+        )
+
+        await update.message.reply_text(
+            "❌ خطایی در دریافت فیش رخ داد. لطفاً مجدداً تلاش کنید.",
+            reply_markup=ReplyKeyboardRemove(),
+        )
+
+        return ConversationHandler.END
+
+    # -----------------------------------------------------------------------
+    # ذخیره فایل
+    # -----------------------------------------------------------------------
+
+    receipt_local_path = None
+
+    try:
+        receipt_local_path = save_receipt(
+            bytes(file_bytes),
+            "jpg",
+        )
+
+    except Exception as e:
+        logger.error(
+            f"خطا در ذخیره فایل فیش: {e}",
+            exc_info=True,
+        )
+
+        await update.message.reply_text(
+            "❌ خطایی در ذخیره فیش رخ داد. لطفاً مجدداً تلاش کنید.",
+            reply_markup=ReplyKeyboardRemove(),
+        )
+
+        return ConversationHandler.END
+
+    # -----------------------------------------------------------------------
+    # ساخت یک Payment برای هر نفر
+    # -----------------------------------------------------------------------
+
+    try:
+        with Session(engine) as session:
+
+            for pid in participant_ids:
+                new_payment = Payment(
+                    participant_id=pid,
+                    trip_id=trip_id,
+                    telegram_user_id=telegram_user_id,
+                    payment_type=payment_type,
+                    expected_amount=expected_amount,
+                    receipt_file_id=file_id,
+                    receipt_file_unique_id=file_unique_id,
+                    receipt_local_path=receipt_local_path,
+                    status="pending_review",
+                    created_at=datetime.now().isoformat(),
+                )
+
+                session.add(new_payment)
+
+            session.commit()
+
+    except Exception as e:
+        logger.error(
+            f"خطا در ساخت Payment: {e}",
+            exc_info=True,
+        )
+
+        # حذف فایل orphan
+        if receipt_local_path:
+            try:
+                if os.path.exists(receipt_local_path):
+                    os.remove(receipt_local_path)
+
+            except Exception as cleanup_e:
+                logger.error(
+                    f"خطا در حذف فایل orphan: {cleanup_e}"
+                )
+
+        await update.message.reply_text(
+            "❌ خطایی در ثبت پرداخت رخ داد. لطفاً مجدداً تلاش کنید.",
+            reply_markup=ReplyKeyboardRemove(),
+        )
+
+        return ConversationHandler.END
+
+    # -----------------------------------------------------------------------
+    # موفقیت
+    # -----------------------------------------------------------------------
+
+    count = len(participant_ids)
+
+    await update.message.reply_text(
+        f"✅ فیش شما دریافت شد و در انتظار بررسی است.\n"
+        f"({count} نفر از پرداخت شما تحت بررسی قرار گرفتند.)",
+        reply_markup=ReplyKeyboardRemove(),
+    )
+
+    # پاک کردن اطلاعات موقت پرداخت و ثبت‌نام چندنفره
+    for key in [
+        "payment_trips_map",
+        "payment_trip_id",
+        "payment_participant_id",
+        "payment_participant_ids",
+        "payment_type",
+        "payment_expected_amount",
+        "payment_unit_amount",
+        "payment_per_person_deposit",
+        "payment_per_person_full",
+        "reg_count",
+        "reg_pending",
+        "reg_current",
+        "reg_index",
+    ]:
+        context.user_data.pop(
+            key,
+            None,
+        )
+
+    return ConversationHandler.END
+
+
+# ===========================================================================
 # لغو پرداخت
 # ===========================================================================
 
@@ -1123,6 +1466,13 @@ def build_bot_app():
                 MessageHandler(
                     filters.TEXT & ~filters.COMMAND,
                     select_trip,
+                )
+            ],
+
+            COUNT: [
+                MessageHandler(
+                    filters.TEXT & ~filters.COMMAND,
+                    get_count,
                 )
             ],
 
