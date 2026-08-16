@@ -234,6 +234,32 @@ def get_trip_participants(trip_id: int):
             })
 
         return result
+@app.get("/trips/{trip_id}/total_received")
+def get_trip_total_received(trip_id: int):
+    """محاسبه جمع دریافتی کل یک تور (مجموع مبالغ تأییدشده همه شرکت‌کنندگان)."""
+    with Session(engine) as session:
+        trip = session.get(Trip, trip_id)
+        if not trip:
+            raise HTTPException(404, "تور یافت نشد")
+
+        participants = session.exec(
+            select(Participant).where(Participant.trip_id == trip_id)
+        ).all()
+
+        total_received = 0.0
+        for participant in participants:
+            confirmed_total = get_confirmed_total(
+                participant.id,
+                trip_id,
+                session,
+            )
+            total_received += confirmed_total
+
+        return {
+            "trip_id": trip_id,
+            "total_received": round(total_received, 2),
+            "currency": "تومان"
+        }
 
 
 @app.post("/participants", response_model=Participant)
