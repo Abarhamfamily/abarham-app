@@ -8,7 +8,7 @@ from typing import List, Optional
 from fastapi import FastAPI, HTTPException
 from migration import run_migrations
 from fastapi.responses import HTMLResponse, FileResponse, Response
-from sqlmodel import Session, select
+from sqlmodel import Session, select, delete
 
 from models import engine, create_db_and_tables, Trip, Participant, Payment
 from payment import (
@@ -282,14 +282,14 @@ def delete_participant(participant_id: int):
         if not db_participant:
             raise HTTPException(404, "????? ???? ???")
 
-        payments = session.exec(
-            select(Payment).where(
-                Payment.participant_id == participant_id
-            )
-        ).all()
-
-        for payment in payments:
-            session.delete(payment)
+        # حذف تمام فیش‌های پرداخت این مسافر.
+        # از حذف انبوه (bulk delete) استفاده می‌کنیم تا دستور SQL بلافاصله اجرا شود
+        # و ردیف‌های Payment پیش از حذف خود Participant حذف شوند.
+        # (در PostgreSQL ترتیب session.delete مشخص نیست؛ بدون این کار
+        #  حذف Parent پیش از Child رخ می‌دهد و با خطای FOREIGN KEY متوقف می‌شود.)
+        session.exec(
+            delete(Payment).where(Payment.participant_id == participant_id)
+        )
 
         session.delete(db_participant)
         session.commit()
