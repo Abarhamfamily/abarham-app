@@ -1,0 +1,29 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Environment variables
+.env
+
+# Local database
+abarham.db
+
+# Uploaded payment receipts
+receipts/
+
+# Editor / tooling
+.continue/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Database backups
+abarham_backup_before_cleanup.db
+abarham_before_real_registrations.db

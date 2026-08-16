@@ -801,11 +801,30 @@
         const activeTrips = allTrips.filter(t => (t.status || 'active') === 'active');
         const completedTrips = allTrips.filter(t => (t.status || 'active') === 'completed');
 
-        // ردیف سفرهای فعال
-        activeTrips.forEach((t, index) => {
-            const filteredParts = allParticipants.filter(p => p.trip_id === t.id);
-            const totalCollected = filteredParts.reduce((sum, p) => sum + (p.paid_amount || 0), 0);
-            const capacityText = t.capacity ? `${filteredParts.length} / ${t.capacity}` : `${filteredParts.length} (نامحدود)`;
+        // ردیف سفرهای فعال - دریافت جمع دریافتی از سرور
+        const totalReceivedPromises = activeTrips.map(async (t) => {
+            try {
+                const res = await fetch(`/trips/${t.id}/total_received`);
+                if (res.ok) {
+                    const data = await res.json();
+                    return { tripId: t.id, total: data.total_received || 0 };
+                }
+            } catch (err) {
+                console.error('خطا در دریافت جمع دریافتی تور:', err);
+            }
+            return { tripId: t.id, total: 0 };
+        });
+
+        Promise.all(totalReceivedPromises).then(totalReceivedArray => {
+            const totalReceivedMap = {};
+            totalReceivedArray.forEach(item => {
+                totalReceivedMap[item.tripId] = item.total;
+            });
+
+            activeTrips.forEach((t, index) => {
+                const filteredParts = allParticipants.filter(p => p.trip_id === t.id);
+                const totalCollected = totalReceivedMap[t.id] !== undefined ? totalReceivedMap[t.id] : 0;
+                const capacityText = t.capacity ? `${filteredParts.length} / ${t.capacity}` : `${filteredParts.length} (نامحدود)`;
 
             tripsTable.innerHTML += `
                 <tr>
