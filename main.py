@@ -280,9 +280,20 @@ def delete_participant(participant_id: int):
     with Session(engine) as session:
         db_participant = session.get(Participant, participant_id)
         if not db_participant:
-            raise HTTPException(404, "مسافر یافت نشد")
+            raise HTTPException(404, "????? ???? ???")
+
+        payments = session.exec(
+            select(Payment).where(
+                Payment.participant_id == participant_id
+            )
+        ).all()
+
+        for payment in payments:
+            session.delete(payment)
+
         session.delete(db_participant)
         session.commit()
+
         return {"ok": True}
 
 
