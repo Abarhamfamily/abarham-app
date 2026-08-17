@@ -10,7 +10,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from migration import run_migrations
 from fastapi.responses import HTMLResponse, FileResponse, Response, JSONResponse
 from sqlmodel import Session, select, delete
-from passlib.context import CryptContext
+import bcrypt
 
 from models import engine, create_db_and_tables, Trip, Participant, Payment
 from payment import (
@@ -114,7 +114,21 @@ if not ADMIN_USERNAME or not ADMIN_PASSWORD_HASH:
     raise RuntimeError("ADMIN_USERNAME and ADMIN_PASSWORD environment variables are required but not set")
 
 # Password hashing configuration
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+def hash_password(password: str) -> str:
+    """Hash a password using bcrypt."""
+    # Convert password to bytes and generate salt
+    password_bytes = password.encode('utf-8')
+    salt = bcrypt.gensalt()
+    # Hash the password
+    hashed = bcrypt.hashpw(password_bytes, salt)
+    return hashed.decode('utf-8')
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Verify a password against the hashed version."""
+    plain_bytes = plain_password.encode('utf-8')
+    hashed_bytes = hashed_password.encode('utf-8')
+    return bcrypt.checkpw(plain_bytes, hashed_bytes)
+
 
 
 def verify_admin_session(request: Request):
@@ -134,7 +148,7 @@ async def login(request: Request, username: str = Form(...), password: str = For
     """
     Admin login endpoint.
     """
-    if username != ADMIN_USERNAME or not pwd_context.verify(password, ADMIN_PASSWORD_HASH):
+    if username != ADMIN_USERNAME or not verify_password(password, ADMIN_PASSWORD_HASH):
         raise HTTPException(
             status_code=401,
             detail="Invalid credentials"
