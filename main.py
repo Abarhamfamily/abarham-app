@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import List, Optional
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Header, Depends
 from migration import run_migrations
 from fastapi.responses import HTMLResponse, FileResponse, Response
 from sqlmodel import Session, select, delete
@@ -25,9 +25,27 @@ from telegram import InlineKeyboardMarkup, InlineKeyboardButton
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("abarham")
 
+# Admin API Authentication
+ADMIN_API_KEY = os.getenv("ADMIN_API_KEY")
+if ADMIN_API_KEY is None:
+    raise RuntimeError("ADMIN_API_KEY environment variable is required but not set")
+
+def verify_admin_api_key(x_admin_api_key: str = Header(None)):
+    """
+    Minimal admin authentication dependency.
+    Protects admin-sensitive endpoints only.
+    """
+    if not x_admin_api_key or x_admin_api_key != ADMIN_API_KEY:
+        raise HTTPException(
+            status_code=401,
+            detail="Admin authentication required"
+        )
+    return True
+
 # نگه‌داری رفرنس به اپ تلگرام و تسک یادآوری برای shutdown تمیز
 telegram_app = None
 reminder_task = None
+
 
 
 @asynccontextmanager
@@ -122,7 +140,7 @@ def get_trips():
 
 @app.post("/trips", response_model=Trip)
 @app.post("/trips/", response_model=Trip)
-def create_trip(trip: Trip):
+def create_trip(trip: Trip, _: bool = Depends(verify_admin_api_key)):
     trip.id = None  # جلوگیری از تزریق id توسط کلاینت
     with Session(engine) as session:
         session.add(trip)
@@ -264,7 +282,7 @@ def get_trip_total_received(trip_id: int):
 
 @app.post("/participants", response_model=Participant)
 @app.post("/participants/", response_model=Participant)
-def create_participant(participant: Participant):
+def create_participant(participant: Participant, _: bool = Depends(verify_admin_api_key)):
     participant.id = None
     with Session(engine) as session:
         trip = session.get(Trip, participant.trip_id)
@@ -376,7 +394,7 @@ def get_payments(status: Optional[str] = None):
 
 
 @app.post("/payments/{payment_id}/confirm")
-async def confirm_payment(payment_id: int):
+async def confirm_payment(payment_id: int, _: bool = Depends(verify_admin_api_key)):
     with Session(engine) as session:
         payment = session.get(Payment, payment_id)
         if not payment:
@@ -432,7 +450,7 @@ async def confirm_payment(payment_id: int):
 
 
 @app.post("/payments/{payment_id}/reject")
-def reject_payment(payment_id: int):
+def reject_payment(payment_id: int, _: bool = Depends(verify_admin_api_key)):
     with Session(engine) as session:
         payment = session.get(Payment, payment_id)
         if not payment:
