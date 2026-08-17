@@ -27,3 +27,5 @@ Thumbs.db
 # Database backups
 abarham_backup_before_cleanup.db
 abarham_before_real_registrations.db
+abarham_before_architecture_v1.db
+_test_multireg.db
