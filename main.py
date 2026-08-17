@@ -165,7 +165,7 @@ def update_trip(trip_id: int, trip: Trip):
 
 
 @app.delete("/trips/{trip_id}")
-def delete_trip(trip_id: int):
+def delete_trip(trip_id: int, _: bool = Depends(verify_admin_api_key)):
     with Session(engine) as session:
         db_trip = session.get(Trip, trip_id)
         if not db_trip:
@@ -320,7 +320,7 @@ def update_participant(participant_id: int, participant: Participant):
 
 
 @app.delete("/participants/{participant_id}")
-def delete_participant(participant_id: int):
+def delete_participant(participant_id: int, _: bool = Depends(verify_admin_api_key)):
     with Session(engine) as session:
         db_participant = session.get(Participant, participant_id)
         if not db_participant:
