@@ -150,7 +150,7 @@ def create_trip(trip: Trip, _: bool = Depends(verify_admin_api_key)):
 
 
 @app.put("/trips/{trip_id}", response_model=Trip)
-def update_trip(trip_id: int, trip: Trip):
+def update_trip(trip_id: int, trip: Trip, _: bool = Depends(verify_admin_api_key)):
     with Session(engine) as session:
         db_trip = session.get(Trip, trip_id)
         if not db_trip:
@@ -305,7 +305,7 @@ def create_participant(participant: Participant, _: bool = Depends(verify_admin_
 
 
 @app.put("/participants/{participant_id}", response_model=Participant)
-def update_participant(participant_id: int, participant: Participant):
+def update_participant(participant_id: int, participant: Participant, _: bool = Depends(verify_admin_api_key)):
     with Session(engine) as session:
         db_participant = session.get(Participant, participant_id)
         if not db_participant:
