@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import List, Optional
 
 from fastapi import FastAPI, HTTPException, Header, Depends, Request, Form
-from fastapi.middleware.session import SessionMiddleware
+from starlette.middleware.sessions import SessionMiddleware
 from migration import run_migrations
 from fastapi.responses import HTMLResponse, FileResponse, Response, JSONResponse
 from sqlmodel import Session, select, delete
