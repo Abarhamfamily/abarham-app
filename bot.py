@@ -19,7 +19,7 @@ from telegram.ext import (
 )
 from sqlmodel import Session, select
 
-from models import engine, Participant, Trip, Payment
+from models import engine, Participant, Trip, Payment, User, Registration
 from payment import (
     calculate_deposit,
     calculate_full_amount,
@@ -375,6 +375,61 @@ async def _finalize_registration(
                         reply_markup=ReplyKeyboardRemove()
                     )
                     return ConversationHandler.END
+
+            # =====================================================================
+            # Phase 2: Create User and Registration records
+            # =====================================================================
+            user = session.exec(
+                select(User).where(User.telegram_user_id == telegram_user_id)
+            ).first()
+
+            if not user:
+                # Create new User if doesn't exist
+                user = User(
+                    telegram_user_id=telegram_user_id,
+                    full_name=reg_pending[0]["full_name"],
+                    phone_number=reg_pending[0]["phone_number"],
+                    national_id=reg_pending[0]["national_id"],
+                    status="active",
+                    created_at=datetime.now().isoformat()
+                )
+                session.add(user)
+                session.flush()
+            else:
+                # Update existing User with latest info from first registration
+                user.full_name = reg_pending[0]["full_name"]
+                user.phone_number = reg_pending[0]["phone_number"]
+                user.national_id = reg_pending[0]["national_id"]
+                session.add(user)
+                session.flush()
+
+            # Create Registration for this User and Trip
+            existing_registration = session.exec(
+                select(Registration).where(
+                    Registration.user_id == user.id,
+                    Registration.trip_id == trip_id
+                )
+            ).first()
+
+            if existing_registration:
+                # Reuse existing registration
+                registration = existing_registration
+            else:
+                # Create new registration
+                registration = Registration(
+                    user_id=user.id,
+                    trip_id=trip_id,
+                    status="pending",
+                    registered_at=datetime.now().isoformat(),
+                    confirmed_at=None,
+                    cancelled_at=None
+                )
+                session.add(registration)
+                session.flush()
+
+            # =====================================================================
+            # Continue with existing Participant creation flow
+            # =====================================================================
 
             # ساخت شرکت‌کننده‌ها
             participant_ids = []

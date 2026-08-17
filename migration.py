@@ -80,3 +80,54 @@ def run_migrations() -> None:
             print("✅ Migration: status به جدول trip اضافه شد (پیش‌فرض active).")
         else:
             print("ℹ️ Migration: status از قبل وجود دارد.")
+
+    # -----------------------------------------------------------------------
+    # ایجاد جدول user (اگر وجود نداشته باشد)
+    # -----------------------------------------------------------------------
+    if "user" not in inspector.get_table_names():
+        with engine.begin() as connection:
+            connection.execute(
+                text(
+                    """
+                    CREATE TABLE user (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        telegram_user_id BIGINT UNIQUE,
+                        full_name VARCHAR NOT NULL,
+                        phone_number VARCHAR,
+                        national_id VARCHAR,
+                        status VARCHAR NOT NULL DEFAULT 'active',
+                        created_at VARCHAR NOT NULL
+                    )
+                    """
+                )
+            )
+        print("✅ Migration: جدول user ایجاد شد.")
+    else:
+        print("ℹ️ Migration: جدول user از قبل وجود دارد.")
+
+    # -----------------------------------------------------------------------
+    # ایجاد جدول registration (اگر وجود نداشته باشد)
+    # -----------------------------------------------------------------------
+    if "registration" not in inspector.get_table_names():
+        with engine.begin() as connection:
+            connection.execute(
+                text(
+                    """
+                    CREATE TABLE registration (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        user_id BIGINT NOT NULL,
+                        trip_id BIGINT NOT NULL,
+                        status VARCHAR NOT NULL DEFAULT 'pending',
+                        registered_at VARCHAR NOT NULL,
+                        confirmed_at VARCHAR,
+                        cancelled_at VARCHAR,
+                        FOREIGN KEY (user_id) REFERENCES user (id),
+                        FOREIGN KEY (trip_id) REFERENCES trip (id),
+                        UNIQUE (user_id, trip_id)
+                    )
+                    """
+                )
+            )
+        print("✅ Migration: جدول registration ایجاد شد.")
+    else:
+        print("ℹ️ Migration: جدول registration از قبل وجود دارد.")

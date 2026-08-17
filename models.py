@@ -74,6 +74,40 @@ class ReminderLog(SQLModel, table=True):
 
 
 # ---------------------------------------------------------------------------
+# مدل کاربر
+# ---------------------------------------------------------------------------
+class User(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    telegram_user_id: Optional[int] = Field(default=None, unique=True)
+    full_name: str
+    phone_number: Optional[str] = None
+    national_id: Optional[str] = None
+    status: str = "active"
+    created_at: str
+
+
+# ---------------------------------------------------------------------------
+# مدل ثبت‌نام
+# ---------------------------------------------------------------------------
+class Registration(SQLModel, table=True):
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id",
+            "trip_id",
+            name="uq_registration_user_trip",
+        ),
+    )
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id")
+    trip_id: int = Field(foreign_key="trip.id")
+    status: str = "pending"
+    registered_at: str
+    confirmed_at: Optional[str] = None
+    cancelled_at: Optional[str] = None
+
+
+# ---------------------------------------------------------------------------
 # تنظیمات دیتابیس (یک منبع واحد؛ همه‌ی فایل‌ها این engine را ایمپورت می‌کنند)
 # ---------------------------------------------------------------------------
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./abarham.db")
