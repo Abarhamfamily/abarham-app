@@ -1131,14 +1131,20 @@ credentials: 'include',
 
         try {
             const tripsRes = await fetch('/trips', {
+                cache: 'no-store',
                 credentials: 'include'
             });
+            if (!tripsRes.ok) throw new Error('Failed to fetch trips');
             const trips = await tripsRes.json();
+            if (!Array.isArray(trips)) throw new Error('Invalid trips data');
 
             const partsRes = await fetch('/participants', {
+                cache: 'no-store',
                 credentials: 'include'
             });
+            if (!partsRes.ok) throw new Error('Failed to fetch participants');
             const participants = await partsRes.json();
+            if (!Array.isArray(participants)) throw new Error('Invalid participants data');
 
             allTrips = trips;
             allParticipants = participants;
