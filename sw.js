@@ -25,11 +25,21 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
+    // درخواست‌های به /trips, /login و هر درخواستی با /api/ را کش نکن
+    if (event.request.url.includes('/trips') ||
+        event.request.url.includes('/login') ||
+        event.request.url.includes('/api/')) {
+        return fetch(event.request);
+    }
+
     event.respondWith(
         fetch(event.request)
             .then((response) => {
-                const responseClone = response.clone();
-                caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
+                // فقط پاسخ‌های با status 200 را کش کن
+                if (response.status === 200) {
+                    const responseClone = response.clone();
+                    caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
+                }
                 return response;
             })
             .catch(() => caches.match(event.request))

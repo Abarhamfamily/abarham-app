@@ -162,7 +162,8 @@ async def login(request: Request, username: str = Form(...), password: str = For
         key="admin_authenticated",
         value="true",
         httponly=True,
-        samesite="lax",
+        samesite="none" if request.url.scheme == "https" else "lax",
+        secure=True if request.url.scheme == "https" else False,
         max_age=86400
     )
     return response
