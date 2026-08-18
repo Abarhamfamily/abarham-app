@@ -431,15 +431,17 @@
         // Check auth on page load
         document.addEventListener('DOMContentLoaded', checkAuth);
     </script>
-            background-color: #2563eb;
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 6px;
-            font-family: 'Vazirmatn', sans-serif;
-            font-weight: bold;
-            cursor: pointer;
-        }
+        <style>
+            .btn-blue {
+                background-color: #2563eb;
+                color: white;
+                border: none;
+                padding: 8px 16px;
+                border-radius: 6px;
+                font-family: 'Vazirmatn', sans-serif;
+                font-weight: bold;
+                cursor: pointer;
+            }
 
         .grid {
             display: grid;
@@ -1004,13 +1006,11 @@ credentials: 'include',
 
         try {
             const res = await fetch(url, {
-                method: method,
-                headers: { 'Content-Type': 'application/json' },
-credentials: 'include',
-credentials: 'include',
-                body: JSON.stringify(participantData)
-credentials: 'include',
-            });
+               method: method,
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify(participantData)
+        });
 
             if (res.ok) {
                 alert(participantId ? "اطلاعات مسافر بروزرسانی شد!" : "مسافر جدید با موفقیت ثبت شد!");
