@@ -156,7 +156,16 @@ async def login(request: Request, username: str = Form(...), password: str = For
     
     request.session["admin_authenticated"] = True
     
-    return JSONResponse({"success": True})
+    # Set secure session cookie
+    response = JSONResponse({"success": True})
+    response.set_cookie(
+        key="admin_authenticated",
+        value="true",
+        httponly=True,
+        samesite="lax",
+        max_age=86400
+    )
+    return response
 
 @app.post("/logout")
 async def logout(request: Request):
@@ -198,7 +207,7 @@ def get_logo():
 def read_root():
     if os.path.exists("index.html"):
         return FileResponse("index.html")
-    return "<h1>فایل index.html یافت نشد!</h1>"
+    return HTMLResponse("<h1>فایل index.html یافت نشد!</h1>")
 
 
 # ---------------------------------------------------------------------------
