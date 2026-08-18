@@ -148,6 +148,11 @@ async def login(request: Request, username: str = Form(...), password: str = For
     """
     Admin login endpoint.
     """
+    print(f"[DEBUG LOGIN] Input Username: '{username}'")
+    print(f"[DEBUG LOGIN] Expected Username: '{ADMIN_USERNAME}'")
+    print(f"[DEBUG LOGIN] Received Password Length: {len(password)}")
+    print(f"[DEBUG LOGIN] Hashed Password in Env exists: {bool(ADMIN_PASSWORD_HASH)}")
+    
     if username != ADMIN_USERNAME or not verify_password(password, ADMIN_PASSWORD_HASH):
         raise HTTPException(
             status_code=401,
