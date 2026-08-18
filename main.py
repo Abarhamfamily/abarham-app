@@ -126,7 +126,7 @@ def hash_password(password: str) -> str:
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a password against the hashed version."""
     plain_bytes = plain_password.encode('utf-8')
-    hashed_bytes = hashed_password.encode('utf-8')
+    hashed_bytes = hashed_password.strip().encode('utf-8')
     return bcrypt.checkpw(plain_bytes, hashed_bytes)
 
 
@@ -152,6 +152,8 @@ async def login(request: Request, username: str = Form(...), password: str = For
     print(f"[DEBUG LOGIN] Expected Username: '{ADMIN_USERNAME}'")
     print(f"[DEBUG LOGIN] Received Password Length: {len(password)}")
     print(f"[DEBUG LOGIN] Hashed Password in Env exists: {bool(ADMIN_PASSWORD_HASH)}")
+    print(f"[DEBUG BCRYPT] Hash in env starts with: '{ADMIN_PASSWORD_HASH[:10] if ADMIN_PASSWORD_HASH else 'NONE'}'")
+    print(f"[DEBUG BCRYPT] Hash total length: {len(ADMIN_PASSWORD_HASH) if ADMIN_PASSWORD_HASH else 0}")
     
     if username != ADMIN_USERNAME or not verify_password(password, ADMIN_PASSWORD_HASH):
         raise HTTPException(
@@ -171,6 +173,15 @@ async def login(request: Request, username: str = Form(...), password: str = For
         secure=True if request.url.scheme == "https" else False,
         max_age=86400
     )
+@app.get("/generate-hash")
+async def generate_hash():
+    """
+    Temporary endpoint to generate bcrypt hash for 'Geo5588Cli'.
+    Use this to set the ADMIN_PASSWORD environment variable.
+    """
+    password = "Geo5588Cli"
+    hashed = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+    return {"hash": hashed.decode('utf-8')}
     return response
 
 @app.post("/logout")
