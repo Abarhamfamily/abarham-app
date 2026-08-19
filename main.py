@@ -51,6 +51,9 @@ def verify_admin_session(request: Request):
         raise HTTPException(status_code=401, detail="Admin not authenticated")
     return True
 
+def get_session():
+    with Session(engine) as session:
+        yield session
 # Keep reference to telegram app and reminder task for clean shutdown
 telegram_app = None
 reminder_task = None
@@ -227,6 +230,9 @@ def get_manifest():
     return JSONResponse(content=manifest_content)
 
 
+@app.get("/health")
+def health_check():
+    return {"status": "ok"}
 @app.get("/logo.png")
 def get_logo():
     if os.path.exists("logo.png"):
@@ -250,6 +256,12 @@ def get_trips():
     with Session(engine) as session:
         return session.exec(select(Trip)).all()
 
+@app.get("/trips/{trip_id}/total_received")
+def get_trip_total_received(trip_id: int, session: Session = Depends(get_session)):
+    # محاسبه مجموع paid_amount مسافران تأییدشده این تور
+    payments = session.exec(select(Payment).where(Payment.trip_id == trip_id, Payment.status == "confirmed")).all()
+    total = sum(p.expected_amount for p in payments)
+    return {"total_received": total}
 @app.post("/trips", response_model=Trip, dependencies=[Depends(verify_admin_session)])
 
 def create_trip(trip: TripCreate):

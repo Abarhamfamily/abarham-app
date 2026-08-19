@@ -904,7 +904,7 @@
     async function checkServerStatus() {
         const badge = document.getElementById('connectionStatus');
         try {
-            const res = await fetch('/trips', { cache: 'no-store', credentials: 'include' });
+            const res = await fetch('/health', { cache: 'no-store', credentials: 'include' });
             if (res.ok) {
                 isServerOnline = true;
                 if (badge) {
