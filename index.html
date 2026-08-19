@@ -348,10 +348,14 @@
                     credentials: 'include'
                 });
                 
-                if (res.status === 401) {
+                if (res.ok) {
+                    window.isLoggedIn = true;
+                } else {
+                    window.isLoggedIn = false;
                     showLoginModal();
                 }
             } catch (err) {
+                window.isLoggedIn = false;
                 showLoginModal();
             }
         }
@@ -359,11 +363,13 @@
         // Show login modal
         function showLoginModal() {
             document.getElementById('loginModal').style.display = 'block';
+            window.isLoggedIn = false;
         }
 
         // Hide login modal
         function hideLoginModal() {
             document.getElementById('loginModal').style.display = 'none';
+            window.isLoggedIn = true;
         }
 
         // Handle login form submission
@@ -842,7 +848,7 @@
 <div class="modal-overlay" id="receiptModal" onclick="closeReceiptModal()">
     <div class="modal-content" onclick="event.stopPropagation()">
         <button class="modal-close" onclick="closeReceiptModal()">✕</button>
-        <img id="receiptModalImg" src="" alt="فیش پرداخت">
+        <img id="receiptModalImg" src="" alt="فیش پرداخت" onerror="this.onerror=null; this.src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg'">
     </div>
 </div>
 
@@ -1130,6 +1136,10 @@ credentials: 'include',
             return;
         }
 
+        if (!window.isLoggedIn) {
+            return;
+        }
+
         try {
             const tripsRes = await fetch('/trips', {
                 cache: 'no-store',
@@ -1329,6 +1339,12 @@ credentials: 'include',
             return;
         }
 
+        if (!window.isLoggedIn) {
+            statusEl.className = 'payments-error';
+            statusEl.textContent = 'لطفاً ابتدا وارد شوید.';
+            return;
+        }
+
         statusEl.className = 'payments-loading';
         statusEl.textContent = 'در حال دریافت پرداخت‌ها...';
         table.innerHTML = '';
@@ -1403,7 +1419,7 @@ credentials: 'include',
             const canReview = p.status === 'pending_review';
 
             const receiptCell = receiptUrl
-                ? `<img class="receipt-thumb" src="${receiptUrl}" alt="فیش" title="مشاهده فیش" onclick="openReceiptModal('${receiptUrl}')">`
+                ? `<img class="receipt-thumb" src="${receiptUrl}" alt="فیش" title="مشاهده فیش" onclick="openReceiptModal('${receiptUrl}')" onerror="this.onerror=null; this.src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg'">`
                 : '<span style="color:#9ca3af;">-</span>';
 
             const actionsCell = canReview

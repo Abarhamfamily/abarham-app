@@ -262,6 +262,12 @@ def get_trip_total_received(trip_id: int, session: Session = Depends(get_session
     payments = session.exec(select(Payment).where(Payment.trip_id == trip_id, Payment.status == "confirmed")).all()
     total = sum(p.expected_amount for p in payments)
     return {"total_received": total}
+
+@app.get("/trips/{trip_id}/participants")
+def get_trip_participants(trip_id: int, session: Session = Depends(get_session)):
+    participants = session.exec(select(Participant).where(Participant.trip_id == trip_id)).all()
+    return participants
+
 @app.post("/trips", response_model=Trip, dependencies=[Depends(verify_admin_session)])
 
 def create_trip(trip: TripCreate):
