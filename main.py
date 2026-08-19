@@ -28,6 +28,40 @@ from reminders import run_reminder_loop, mark_completed_trips
 from telegram import InlineKeyboardMarkup, InlineKeyboardButton
 
 logging.basicConfig(level=logging.INFO)
+def run_safe_migrations() -> None:
+    \"\"\"
+    Safe migration to add car option columns and transport_type column.
+    \"\"\"
+    from sqlalchemy import inspect, text
+    from models import engine
+
+    inspector = inspect(engine)
+
+    # Add has_car_option and car_fee to trip table if missing
+    if \"trip\" in inspector.get_table_names():
+        trip_columns = {column[\"name\"] for column in inspector.get_columns(\"trip\")}
+        if \"has_car_option\" not in trip_columns:
+            with engine.begin() as connection:
+                connection.execute(text(\"ALTER TABLE trip ADD COLUMN has_car_option BOOLEAN DEFAULT FALSE\"))
+            print(\"✅ Migration: has_car_option به جدول trip اضافه شد.\")
+        else:
+            print(\"ℹ️ Migration: has_car_option از قبل存在.\")
+        if \"car_fee\" not in trip_columns:
+            with engine.begin() as connection:
+                connection.execute(text(\"ALTER TABLE trip ADD COLUMN car_fee INTEGER DEFAULT 0\"))
+            print(\"✅ Migration: car_fee به جدول trip اضافه شد.\")
+        else:
+            print(\"ℹ️ Migration: car_fee از قبل وجود دارد.\")
+
+    # Add transport_type to participant table if missing
+    if \"participant\" in inspector.get_table_names():
+        participant_columns = {column[\"name\"] for column in inspector.get_columns(\"participant\")}
+        if \"transport_type\" not in participant_columns:
+            with engine.begin() as connection:
+                connection.execute(text(\"ALTER TABLE participant ADD COLUMN transport_type VARCHAR DEFAULT 'personal_car'\"))
+            print(\"✅ Migration: transport_type به جدول participant اضافه شد.\")
+        else:
+            print(\"ℹ️ Migration: transport_type از قبل وجود دارد.\")
 # Admin API Authentication
 ADMIN_API_KEY = os.getenv("ADMIN_API_KEY")
 if ADMIN_API_KEY is None:
@@ -65,6 +99,7 @@ async def lifespan(app: FastAPI):
 
     # Create database tables if needed
     create_db_and_tables()
+    run_safe_migrations()
 
     # Start Telegram bot in background
     global telegram_app
@@ -139,6 +174,8 @@ class TripBase(BaseModel):
     capacity: int = 0
     telegram_group_link: Optional[str] = None
     status: str = "active"
+    has_car_option: bool = False
+    car_fee: int = 0
 
 class TripCreate(TripBase):
     pass
@@ -152,6 +189,8 @@ class TripUpdate(BaseModel):
     capacity: Optional[int] = None
     telegram_group_link: Optional[str] = None
     status: Optional[str] = None
+    has_car_option: Optional[bool] = None
+    car_fee: Optional[int] = None
 
 class ParticipantBase(BaseModel):
     full_name: str
@@ -159,6 +198,7 @@ class ParticipantBase(BaseModel):
     phone_number: str
     trip_id: int
     telegram_user_id: Optional[int] = None
+    transport_type: str = "personal_car"
     payment_status: str = "پرداخت بیعانه"
     paid_amount: float = 0.0
 
@@ -171,6 +211,7 @@ class ParticipantUpdate(BaseModel):
     phone_number: Optional[str] = None
     trip_id: Optional[int] = None
     telegram_user_id: Optional[int] = None
+    transport_type: Optional[str] = None
     payment_status: Optional[str] = None
     paid_amount: Optional[float] = None
 # Login/logout endpoints

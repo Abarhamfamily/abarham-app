@@ -700,6 +700,13 @@
                     <label>لینک گروه هماهنگی تلگرام سفر</label>
                     <input type="text" id="t_group" placeholder="https://t.me/...">
                 </div>
+                <div class="form-group">
+                    <label><input type="checkbox" id="t_has_car_option"> قابلیت خودروی شخصی/گروهی</label>
+                </div>
+                <div class="form-group">
+                    <label>مبلغ کرایه ماشین (تومان)</label>
+                    <input type="number" id="t_car_fee" min="0">
+                </div>
                 <button type="submit" class="btn" id="t_btn">ثبت تور</button>
                 <button type="button" class="btn-cancel-edit" id="t_cancel_btn" onclick="resetTripForm()">لغو ویرایش</button>
             </form>
@@ -865,6 +872,7 @@
                         <th>نام و نام خانوادگی</th>
                         <th>کد ملی</th>
                         <th>شماره موبایل</th>
+                        <th>نوع رفت‌وآمد</th>
                         <th>وضعیت پرداخت</th>
                         <th>مبلغ دریافتی</th>
                         <th>مبلغ باقی‌مانده</th>
@@ -955,7 +963,9 @@
             date: document.getElementById('t_date').value,
             price: parseFloat(document.getElementById('t_price').value) || 0,
             capacity: parseInt(document.getElementById('t_capacity').value) || 0,
-            telegram_group_link: document.getElementById('t_group').value || null
+            telegram_group_link: document.getElementById('t_group').value || null,
+            has_car_option: document.getElementById('t_has_car_option').checked,
+            car_fee: parseInt(document.getElementById('t_car_fee').value) || 0
         };
 
         const method = tripId ? 'PUT' : 'POST';
@@ -1084,6 +1094,8 @@ credentials: 'include',
         document.getElementById('t_price').value = trip.price || 0;
         document.getElementById('t_capacity').value = trip.capacity || 0;
         document.getElementById('t_group').value = trip.telegram_group_link || '';
+document.getElementById('t_has_car_option').checked = trip.has_car_option || false;
+document.getElementById('t_car_fee').value = trip.car_fee || 0;
 
         document.getElementById('tripFormTitle').textContent = '۱. ویرایش تور';
         document.getElementById('t_btn').textContent = 'ذخیره تغییرات';
@@ -1114,6 +1126,8 @@ credentials: 'include',
 
     function resetTripForm() {
         document.getElementById('tripForm').reset();
+document.getElementById('t_has_car_option').checked = false;
+document.getElementById('t_car_fee').value = 0;
         document.getElementById('t_id').value = '';
         document.getElementById('t_capacity').value = 0;
         document.getElementById('tripFormTitle').textContent = '۱. ثبت تور جدید';
@@ -1532,12 +1546,14 @@ credentials: 'include',
                 else if (p.payment_status === 'بیعانه تایید شده') badgeClass = 'badge-deposit';
                 else if (p.payment_status === 'پرداخت نشده') badgeClass = 'badge-deposit';
 
+const transportDisplay = p.transport_type === 'personal_car' ? '🚗 ماشین شخصی' : p.transport_type === 'group_car' ? '🚙 ماشین سایرین' : '-';
                 table.innerHTML += `
                     <tr>
                         <td>${index + 1}</td>
                         <td><strong>${p.full_name}</strong></td>
                         <td>${p.national_id || '-'}</td>
                         <td>${p.phone_number || '-'}</td>
+<td>${transportDisplay}</td>\n
                         <td><span class="badge ${badgeClass}">${p.payment_status}</span></td>
                         <td>${(p.confirmed_amount || 0).toLocaleString()} تومان</td>
                         <td>${(p.remaining_amount || 0).toLocaleString()} تومان</td>

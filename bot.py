@@ -7,6 +7,8 @@ from telegram import (
     ReplyKeyboardMarkup,
     KeyboardButton,
     ReplyKeyboardRemove,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
 )
 from telegram.ext import (
     ApplicationBuilder,
@@ -36,9 +38,9 @@ logger = logging.getLogger("abarham.bot")
 # وضعیت‌های Conversation
 # ---------------------------------------------------------------------------
 
-TRIP_SELECT, COUNT, NAME, NATIONAL_ID, PHONE = range(5)
+TRIP_SELECT, COUNT, NAME, NATIONAL_ID, PHONE, TRANSPORT_TYPE = range(6)
 
-PAY_TRIP_SELECT, PAY_TYPE_SELECT, PAY_RECEIPT = range(5, 8)
+PAY_TRIP_SELECT, PAY_TYPE_SELECT, PAY_RECEIPT = range(6, 9)
 
 
 # ---------------------------------------------------------------------------
@@ -318,6 +320,53 @@ async def get_phone_and_save(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     # همه‌ی نفرات جمع‌آوری شدند → ثبت نهایی و ورود به مرحله پرداخت
     return await _finalize_registration(update, context)
+async def handle_transport_selection(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    data = query.data
+    if data == "trans_personal":
+        transport_type = "personal_car"
+    elif data == "trans_group":
+        transport_type = "group_car"
+    else:
+        # Should not happen
+        await query.edit_message_text("خطا در انتخاب نوع vehículo.")
+        return
+
+    # Get the index of the participant we are setting transport for
+    index = context.user_data.get("transport_index")
+    if index is not None and "reg_pending" in context.user_data:
+        reg_pending = context.user_data["reg_pending"]
+        if 0 <= index < len(reg_pending):
+            reg_pending[index]["transport_type"] = transport_type
+
+    # Clear the awaiting_transport flag and transport_index
+    context.user_data.pop("awaiting_transport", None)
+    context.user_data.pop("transport_index", None)
+
+    # Edit the message to show confirmation and remove buttons
+    await query.edit_message_text(
+        f"✅ نوع vehículos به {'شخصی' if transport_type == 'personal_car' else 'سایر اعضا'} تنظیم شد."
+    )
+
+    # Now decide what to do next: check if there are more participants to register
+    reg_count = context.user_data.get("reg_count", 1)
+    reg_index = context.user_data.get("reg_index", 0)
+    if reg_index < reg_count:
+        # Reset reg_current and ask for next participant's name
+        context.user_data["reg_current"] = {}
+        next_label = reg_index + 1
+
+        await query.message.reply_text(
+            f"✅ اطلاعات نفر {reg_index + 1} از {reg_count} ثبت شد.\n\n"
+            f"لطفاً نام و نام خانوادگی نفر {next_label} را وارد کنید:",
+            reply_markup=ReplyKeyboardRemove(),
+        )
+        return NAME
+    else:
+        # All participants registered, finalize registration
+        return await _finalize_registration(update, context)
 
 
 async def _finalize_registration(
@@ -439,7 +488,8 @@ async def _finalize_registration(
                     national_id=reg["national_id"],
                     phone_number=reg["phone_number"],
                     trip_id=trip_id,
-                    telegram_user_id=telegram_user_id
+                    telegram_user_id=telegram_user_id,
+                    transport_type=reg.get("transport_type", "personal_car")
                 )
                 session.add(new_participant)
                 session.flush()
@@ -1122,15 +1172,18 @@ async def receive_payment_receipt(
         )
 
         if payment_type == "deposit":
-            expected_amount = calculate_deposit(
+            base_expected = calculate_deposit(
                 trip.price
             )
-
         else:
-            expected_amount = calculate_full_amount(
+            base_expected = calculate_full_amount(
                 trip.price,
-                confirmed_total,
+                confirmed_total
             )
+        if participant.transport_type == "group_car":
+            expected_amount = base_expected + trip.car_fee
+        else:
+            expected_amount = base_expected
 
     # -----------------------------------------------------------------------
     # دانلود فایل تلگرام
@@ -1553,6 +1606,12 @@ def build_bot_app():
                 MessageHandler(
                     filters.TEXT & ~filters.COMMAND,
                     get_phone_and_save,
+                ),
+            ],
+TRANSPORT_TYPE: [
+                CallbackQueryHandler(
+                    handle_transport_selection,
+                    pattern=r"^trans_"
                 ),
             ],
 
