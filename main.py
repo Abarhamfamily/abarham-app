@@ -28,6 +28,12 @@ from reminders import run_reminder_loop, mark_completed_trips
 from telegram import InlineKeyboardMarkup, InlineKeyboardButton
 
 logging.basicConfig(level=logging.INFO)
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    create_db_and_tables()
+    run_safe_migrations()
+app = FastAPI(lifespan=lifespan)
+    yield
 def run_safe_migrations() -> None:
     \"\"\"
     Safe migration to add car option columns and transport_type column.

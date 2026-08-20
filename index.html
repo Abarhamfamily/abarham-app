@@ -1,3 +1,4 @@
+<!-- dummy -->
 ﻿<!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -1096,6 +1097,8 @@ credentials: 'include',
         document.getElementById('t_group').value = trip.telegram_group_link || '';
 document.getElementById('t_has_car_option').checked = trip.has_car_option || false;
 document.getElementById('t_car_fee').value = trip.car_fee || 0;
+tripData.has_car_option = document.getElementById('t_has_car_option').checked;
+tripData.car_fee = parseInt(document.getElementById('t_car_fee').value) || 0;
 
         document.getElementById('tripFormTitle').textContent = '۱. ویرایش تور';
         document.getElementById('t_btn').textContent = 'ذخیره تغییرات';
@@ -1396,6 +1399,7 @@ document.getElementById('t_car_fee').value = 0;
             'pending_review': ['⏳ در انتظار بررسی', 'badge-pending'],
             'confirmed': ['✅ تأیید شده', 'badge-confirmed'],
             'rejected': ['❌ رد شده', 'badge-rejected'],
+
         };
         const [text, cls] = map[status] || [status, ''];
         return `<span class="badge ${cls}">${text}</span>`;
@@ -1495,6 +1499,17 @@ document.getElementById('t_car_fee').value = 0;
         const img = document.getElementById('receiptModalImg');
         if (!modal || !img) return;
         img.src = src;
+<div class=\"form-group\">
+    <label for=\"t_has_car_option\">قابلیت خودروی شخصی/گروهی</label>
+    <div class=\"form-check\">
+        <input class=\"form-check-input\" type=\"checkbox\" id=\"t_has_car_option\">
+    </div>
+</div>
+<div class=\"form-group\">
+    <label for=\"t_car_fee\">مبلغ کرایه ماشین (تومان)</label>
+    <input type=\"number\" class=\"form-control\" id=\"t_car_fee\" placeholder=\"0\">
+</div>
+test
         modal.classList.add('show');
     }
 
@@ -1583,3 +1598,4 @@ const transportDisplay = p.transport_type === 'personal_car' ? '🚗 ماشین 
 </script>
 </body>
 </html>
+
