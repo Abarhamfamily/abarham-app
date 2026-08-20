@@ -19,29 +19,34 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-    // فقط درخواست‌های GET را کش می‌کنیم؛ درخواست‌های POST/PUT/DELETE به API باید
-    // همیشه مستقیم به شبکه بروند تا خطای واضح بگیرند اگر آفلاین هستیم.
-    if (event.request.method !== 'GET') {
-        return;
-    }
+  // Only handle GET requests
+  if (event.request.method !== 'GET') {
+    return; // let browser handle non-GET (network)
+  }
 
-    // درخواست‌های به /trips, /login و هر درخواستی با /api/ را کش نکن
-    if (event.request.url.includes('/trips') ||
-        event.request.url.includes('/login') ||
-        event.request.url.includes('/api/')) {
-        return fetch(event.request);
-    }
+  // Bypass caching for API routes
+  const url = event.request.url;
+  if (
+    url.includes('/trips') ||
+    url.includes('/participants') ||
+    url.includes('/payments') ||
+    url.includes('/login') ||
+    url.includes('/api/')
+  ) {
+    return event.respondWith(fetch(event.request));
+  }
 
-    event.respondWith(
-        fetch(event.request)
-            .then((response) => {
-                // فقط پاسخ‌های با status 200 را کش کن
-                if (response.status === 200) {
-                    const responseClone = response.clone();
-                    caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
-                }
-                return response;
-            })
-            .catch(() => caches.match(event.request))
-    );
+  // Otherwise, try network then cache
+  event.respondWith(
+    fetch(event.request)
+      .then(response => {
+        // Only cache successful responses
+        if (response.status === 200) {
+          const responseClone = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(event.request, responseClone));
+        }
+        return response;
+      })
+      .catch(() => caches.match(event.request))
+  );
 });
