@@ -32,42 +32,43 @@ logging.basicConfig(level=logging.INFO)
 async def lifespan(app: FastAPI):
     create_db_and_tables()
     run_safe_migrations()
-app = FastAPI(lifespan=lifespan)
     yield
+
+app = FastAPI(lifespan=lifespan)
 def run_safe_migrations() -> None:
-    \"\"\"
+    """
     Safe migration to add car option columns and transport_type column.
-    \"\"\"
+    """
     from sqlalchemy import inspect, text
     from models import engine
 
     inspector = inspect(engine)
 
     # Add has_car_option and car_fee to trip table if missing
-    if \"trip\" in inspector.get_table_names():
-        trip_columns = {column[\"name\"] for column in inspector.get_columns(\"trip\")}
-        if \"has_car_option\" not in trip_columns:
+    if "trip" in inspector.get_table_names():
+        trip_columns = {column["name"] for column in inspector.get_columns("trip")}
+        if "has_car_option" not in trip_columns:
             with engine.begin() as connection:
-                connection.execute(text(\"ALTER TABLE trip ADD COLUMN has_car_option BOOLEAN DEFAULT FALSE\"))
-            print(\"✅ Migration: has_car_option به جدول trip اضافه شد.\")
+                connection.execute(text("ALTER TABLE trip ADD COLUMN has_car_option BOOLEAN DEFAULT FALSE"))
+            print("✅ Migration: has_car_option به جدول trip اضافه شد.")
         else:
-            print(\"ℹ️ Migration: has_car_option از قبل存在.\")
-        if \"car_fee\" not in trip_columns:
+            print("ℹ️ Migration: has_car_option از قبل存在.")
+        if "car_fee" not in trip_columns:
             with engine.begin() as connection:
-                connection.execute(text(\"ALTER TABLE trip ADD COLUMN car_fee INTEGER DEFAULT 0\"))
-            print(\"✅ Migration: car_fee به جدول trip اضافه شد.\")
+                connection.execute(text("ALTER TABLE trip ADD COLUMN car_fee INTEGER DEFAULT 0"))
+            print("✅ Migration: car_fee به جدول trip اضافه شد.")
         else:
-            print(\"ℹ️ Migration: car_fee از قبل وجود دارد.\")
+            print("ℹ️ Migration: car_fee از قبل وجود دارد.")
 
     # Add transport_type to participant table if missing
-    if \"participant\" in inspector.get_table_names():
-        participant_columns = {column[\"name\"] for column in inspector.get_columns(\"participant\")}
-        if \"transport_type\" not in participant_columns:
+    if "participant" in inspector.get_table_names():
+        participant_columns = {column["name"] for column in inspector.get_columns("participant")}
+        if "transport_type" not in participant_columns:
             with engine.begin() as connection:
-                connection.execute(text(\"ALTER TABLE participant ADD COLUMN transport_type VARCHAR DEFAULT 'personal_car'\"))
-            print(\"✅ Migration: transport_type به جدول participant اضافه شد.\")
+                connection.execute(text("ALTER TABLE participant ADD COLUMN transport_type VARCHAR DEFAULT 'personal_car'"))
+            print("✅ Migration: transport_type به جدول participant اضافه شد.")
         else:
-            print(\"ℹ️ Migration: transport_type از قبل وجود دارد.\")
+            print("ℹ️ Migration: transport_type از قبل وجود دارد.")
 # Admin API Authentication
 ADMIN_API_KEY = os.getenv("ADMIN_API_KEY")
 if ADMIN_API_KEY is None:
