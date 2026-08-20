@@ -1,0 +1,11 @@
+<body>
+<div class="container">
+    <header>
+        <h1>سامانه مدیریت تور و مسافران ابرهام</h1>
+        <p style="font-size: 0.85rem; color: #6b7280;">ثبت، ویرایش، حذف و همگام‌سازی شبکه</p>
+    </header>
+
+    <div class="sync-bar">
+        <div>
+            وضعیت شبکه:
+            <span id="connectionStatus" class="status-badge status-offline">در حال بررسی...</span>

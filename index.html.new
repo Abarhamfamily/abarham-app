@@ -1,4 +1,5 @@
-﻿ï»¿<!DOCTYPE html>
+﻿<!-- dummy -->
+ï»¿<!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
@@ -248,6 +249,381 @@
     </style>
 </head>
 <body>
+    <div class="container">
+        <header>
+            <h1>Ù…Ø¯ÛŒØ±ÛŒØª Ø³ÙØ±Ù‡Ø§</h1>
+            <div class="sync-bar">
+                <span id="syncStatus">Ø¢ÙÙ„Ø§ÛŒÙ† - Ø°Ø®ÛŒØ±Ù‡â€ŒØ³Ø§Ø²ÛŒ Ù…Ø­Ù„ÛŒ</span>
+                <button id="syncButton" class="btn-primary">Ù‡Ù…Ú¯Ø§Ù…â€ŒØ³Ø§Ø²ÛŒ</button>
+            </div>
+        </header>
+        
+        <!-- Login Modal -->
+        <div id="loginModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>ÙˆØ±ÙˆØ¯ Ø¨Ù‡ Ø³ÛŒØ³ØªÙ…</h2>
+                    <span class="close">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <form id="loginFormElement">
+                        
+                        
+                        <div id="loginError" class="error-message" style="display: none;"></div>
+                        <button type="submit" class="btn-primary">ÙˆØ±ÙˆØ¯</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Admin Trips Management -->
+        <section class="trips-section">
+            <div class="trips-header">
+                <h2>Ù…Ø¯ÛŒØ±ÛŒØª Ø³ÙØ±Ù‡Ø§</h2>
+                <button id="addTripBtn" class="btn-primary">Ø§ÙØ²ÙˆØ¯Ù† Ø³ÙØ± Ø¬Ø¯ÛŒØ¯</button>
+            </div>
+            
+            <div id="tripForm" class="trip-form" style="display: none;">
+                <form id="tripFormElement">
+                    <input type="hidden" id="tripId">
+                    <div class="form-grid">
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button type="submit" class="btn-primary">Ø°Ø®ÛŒØ±Ù‡</button>
+                        <button type="button" id="cancelBtn" class="btn-secondary">Ù„ØºÙˆ</button>
+                    </div>
+                </form>
+            </div>
+            
+            <div id="tripsList"></div>
+        </section>
+    </div>
+    
+    <script>
+        // Check if user is logged in
+        async function checkAuth() {
+            try {
+                const res = await fetch('/trips', {
+                    method: 'GET',
+                    credentials: 'include'
+                });
+                
+                if (res.ok) {
+                    window.isLoggedIn = true;
+                } else {
+                    window.isLoggedIn = false;
+                    showLoginModal();
+                }
+            } catch (err) {
+                window.isLoggedIn = false;
+                showLoginModal();
+            }
+        }
+
+        // Show login modal
+        function showLoginModal() {
+            document.getElementById('loginModal').style.display = 'block';
+            window.isLoggedIn = false;
+        }
+
+        // Hide login modal
+        function hideLoginModal() {
+            document.getElementById('loginModal').style.display = 'none';
+            window.isLoggedIn = true;
+        }
+
+        // Handle login form submission
+        document.getElementById('loginFormElement').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            try {
+                const res = await fetch('/login', {
+                    method: 'POST',
+                    headers: {
+                 'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                    body: new URLSearchParams({
+                        'username': username,
+                        'password': password
+                    }),
+                    credentials: 'include'
+                });
+                
+                if (res.ok) {
+                    hideLoginModal();
+                    syncData();
+                } else {
+                    alert('Ù†Ø§Ù… Ú©Ø§Ø±Ø¨Ø±ÛŒ ÛŒØ§ Ø±Ù…Ø² Ø¹Ø¨ÙˆØ± Ø§Ø´ØªØ¨Ø§Ù‡ Ø§Ø³Øª.');
+                }
+            } catch (err) {
+                alert('Ø®Ø·Ø§ Ø¯Ø± Ø§Ø±ØªØ¨Ø§Ø· Ø¨Ø§ Ø³Ø±ÙˆØ±.');
+            }
+        });
+
+        // Add logout button to sync bar
+        const syncBar = document.querySelector('.sync-bar');
+        if (syncBar) {
+            const logoutBtn = document.createElement('button');
+            logoutBtn.textContent = 'Ø®Ø±ÙˆØ¬';
+            logoutBtn.className = 'btn-logout';
+            logoutBtn.style.marginRight = '10px';
+            logoutBtn.style.backgroundColor = '#f44336';
+            logoutBtn.style.color = 'white';
+            logoutBtn.style.border = 'none';
+            logoutBtn.style.padding = '8px 16px';
+            logoutBtn.style.borderRadius = '6px';
+            logoutBtn.style.cursor = 'pointer';
+            
+            logoutBtn.addEventListener('click', async () => {
+                try {
+                    const res = await fetch('/logout', {
+                        method: 'POST',
+                        credentials: 'include'
+                    });
+                    
+                    if (res.ok) {
+                        showLoginModal();
+                    }
+                } catch (err) {
+                    alert('Ø®Ø·Ø§ Ø¯Ø± Ø®Ø±ÙˆØ¬ Ø§Ø² Ø³ÛŒØ³ØªÙ….');
+                }
+            });
+            
+            syncBar.appendChild(logoutBtn);
+        }
+
+        // Check auth on page load
+        document.addEventListener('DOMContentLoaded', checkAuth);
+    </script>
+        <style>
+            .btn-blue {
+                background-color: #2563eb;
+                color: white;
+                border: none;
+                padding: 8px 16px;
+                border-radius: 6px;
+                font-family: 'Vazirmatn', sans-serif;
+                font-weight: bold;
+                cursor: pointer;
+            }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            border: 1px solid var(--border-color);
+        }
+
+        .card h2 {
+            margin-top: 0;
+            font-size: 1.1rem;
+            color: var(--primary);
+            border-bottom: 2px solid #e0f2f1;
+            padding-bottom: 8px;
+        }
+
+        .form-group { margin-bottom: 12px; }
+
+        label {
+            display: block;
+            margin-bottom: 4px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-family: 'Vazirmatn', sans-serif;
+            box-sizing: border-box;
+            font-size: 0.9rem;
+        }
+
+        .btn {
+            width: 100%;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 6px;
+            font-weight: bold;
+            font-family: 'Vazirmatn', sans-serif;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn:hover { background-color: var(--primary-hover); }
+
+        .btn-cancel-edit {
+            width: 100%;
+            background: none;
+            border: 1px solid var(--border-color);
+            color: #6b7280;
+            padding: 8px;
+            border-radius: 6px;
+            margin-top: 8px;
+            cursor: pointer;
+            font-family: 'Vazirmatn', sans-serif;
+            display: none;
+        }
+
+        .table-responsive { overflow-x: auto; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+
+        th, td {
+            padding: 8px 10px;
+            text-align: right;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.85rem;
+            white-space: nowrap;
+        }
+
+        th { background-color: #f9fafb; }
+
+        .badge { padding: 3px 8px; border-radius: 10px; font-size: 0.75rem; font-weight: bold; }
+        .badge-deposit { background-color: #fef3c7; color: #92400e; }
+        .badge-full { background-color: #e0f2f1; color: #004d40; }
+
+        .btn-action {
+            padding: 4px 8px;
+            border-radius: 4px;
+            border: none;
+            font-family: 'Vazirmatn', sans-serif;
+            font-size: 0.75rem;
+            cursor: pointer;
+            margin-left: 2px;
+        }
+
+        .btn-edit { background-color: #f59e0b; color: white; }
+        .btn-delete { background-color: #ef4444; color: white; }
+        .btn-view { background-color: #2563eb; color: white; }
+
+        .full-width { grid-column: 1 / -1; }
+
+        /* --- Ø¨Ø®Ø´ Ø¨Ø±Ø±Ø³ÛŒ Ù¾Ø±Ø¯Ø§Ø®Øªâ€ŒÙ‡Ø§ --- */
+        .payments-filter {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+        }
+
+        .filter-btn {
+            padding: 8px 16px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background: var(--card-bg);
+            font-family: 'Vazirmatn', sans-serif;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .filter-btn.active {
+            background-color: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .badge-pending { background-color: #fef3c7; color: #92400e; }
+        .badge-confirmed { background-color: #e0f2f1; color: #004d40; }
+        .badge-rejected { background-color: #fee2e2; color: #991b1b; }
+
+        .btn-confirm { background-color: #16a34a; color: white; }
+        .btn-reject { background-color: #dc2626; color: white; }
+
+        .receipt-thumb {
+            width: 50px;
+            height: 50px;
+            object-fit: cover;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .receipt-thumb:hover { transform: scale(1.1); }
+
+        .payments-loading, .payments-error, .payments-empty {
+            text-align: center;
+            padding: 20px;
+            color: #6b7280;
+            font-size: 0.9rem;
+        }
+
+        .payments-error { color: #dc2626; }
+
+        /* Modal Ø¨Ø±Ø§ÛŒ Ù†Ù…Ø§ÛŒØ´ ÙÛŒØ´ Ø¨Ø²Ø±Ú¯ */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-overlay.show { display: flex; }
+
+        .modal-content {
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 12px;
+            max-width: 90%;
+            max-height: 90%;
+            position: relative;
+        }
+
+        .modal-content img {
+            max-width: 100%;
+            max-height: 80vh;
+            border-radius: 8px;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: #ef4444;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
 <div class="container">
     <header>
         <h1>Ø³Ø§Ù…Ø§Ù†Ù‡ Ù…Ø¯ÛŒØ±ÛŒØª ØªÙˆØ± Ùˆ Ù…Ø³Ø§ÙØ±Ø§Ù† Ø§Ø¨Ø±Ù‡Ø§Ù…</h1>
@@ -268,37 +644,14 @@
             <h2 id="tripFormTitle">Û±. Ø«Ø¨Øª ØªÙˆØ± Ø¬Ø¯ÛŒØ¯</h2>
             <form id="tripForm" onsubmit="handleTripSubmit(event)">
                 <input type="hidden" id="t_id">
-                <div class="form-group">
-                    <label>Ø¹Ù†ÙˆØ§Ù† ØªÙˆØ±</label>
-                    <input type="text" id="t_title" required>
-                </div>
-                <div class="form-group">
-                    <label>Ù…Ù‚ØµØ¯</label>
-                    <input type="text" id="t_dest" required>
-                </div>
-                <div class="form-group">
-                    <label>ØªØ§Ø±ÛŒØ® Ø¨Ø±Ú¯Ø²Ø§Ø±ÛŒ</label>
-                    <input type="text" id="t_date" placeholder="Û±Û´Û°Ûµ/Û°Ûµ/Û²Û±" required>
-                </div>
-                <div class="form-group">
-                    <label>Ù‚ÛŒÙ…Øª ØªÙˆØ± (ØªÙˆÙ…Ø§Ù†)</label>
-                    <input type="number" id="t_price" required>
-                </div>
-                <div class="form-group">
-                    <label>Ø¸Ø±ÙÛŒØª (Û° = Ù†Ø§Ù…Ø­Ø¯ÙˆØ¯)</label>
-                    <input type="number" id="t_capacity" value="0" min="0">
-                </div>
-                <div class="form-group">
-                    <label>Ù„ÛŒÙ†Ú© Ú¯Ø±ÙˆÙ‡ Ù‡Ù…Ø§Ù‡Ù†Ú¯ÛŒ ØªÙ„Ú¯Ø±Ø§Ù… Ø³ÙØ±</label>
-                    <input type="text" id="t_group" placeholder="https://t.me/...">
-                </div>
-                <div class="form-group">
-                    <label><input type="checkbox" id="t_has_car_option"> Ù‚Ø§Ø¨Ù„ÛŒØª Ø®ÙˆØ¯Ø±ÙˆÛŒ Ø´Ø®ØµÛŒ/Ú¯Ø±ÙˆÙ‡ÛŒ</label>
-                </div>
-                <div class="form-group">
-                    <label>Ù…Ø¨Ù„Øº Ú©Ø±Ø§ÛŒÙ‡ Ù…Ø§Ø´ÛŒÙ† (ØªÙˆÙ…Ø§Ù†)</label>
-                    <input type="number" id="t_car_fee" min="0">
-                </div>
+                
+                
+                
+                
+                
+                
+                
+                
                 <button type="submit" class="btn" id="t_btn">Ø«Ø¨Øª ØªÙˆØ±</button>
                 <button type="button" class="btn-cancel-edit" id="t_cancel_btn" onclick="resetTripForm()">Ù„ØºÙˆ ÙˆÛŒØ±Ø§ÛŒØ´</button>
             </form>
@@ -309,35 +662,12 @@
             <h2 id="participantFormTitle">Û². Ø«Ø¨Øªâ€ŒÙ†Ø§Ù… Ù…Ø³Ø§ÙØ± Ø¬Ø¯ÛŒØ¯</h2>
             <form id="participantForm" onsubmit="handleParticipantSubmit(event)">
                 <input type="hidden" id="p_id">
-                <div class="form-group">
-                    <label>Ø§Ù†ØªØ®Ø§Ø¨ ØªÙˆØ±</label>
-                    <select id="p_trip_id" required>
-                        <option value="">-- Ø§Ø¨ØªØ¯Ø§ ØªÙˆØ± Ø±Ø§ Ø§Ù†ØªØ®Ø§Ø¨ Ú©Ù†ÛŒØ¯ --</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Ù†Ø§Ù… Ùˆ Ù†Ø§Ù… Ø®Ø§Ù†ÙˆØ§Ø¯Ú¯ÛŒ</label>
-                    <input type="text" id="p_name" required>
-                </div>
-                <div class="form-group">
-                    <label>Ú©Ø¯ Ù…Ù„ÛŒ</label>
-                    <input type="text" id="p_national_id" required>
-                </div>
-                <div class="form-group">
-                    <label>Ø´Ù…Ø§Ø±Ù‡ ØªÙ…Ø§Ø³</label>
-                    <input type="text" id="p_phone" required>
-                </div>
-                <div class="form-group">
-                    <label>ÙˆØ¶Ø¹ÛŒØª Ù¾Ø±Ø¯Ø§Ø®Øª</label>
-                    <select id="p_status" required>
-                        <option value="Ù¾Ø±Ø¯Ø§Ø®Øª Ø¨ÛŒØ¹Ø§Ù†Ù‡">Ù¾Ø±Ø¯Ø§Ø®Øª Ø¨ÛŒØ¹Ø§Ù†Ù‡</option>
-                        <option value="Ù¾Ø±Ø¯Ø§Ø®Øª Ú©Ø§Ù…Ù„">Ù¾Ø±Ø¯Ø§Ø®Øª Ú©Ø§Ù…Ù„</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Ù…Ø¨Ù„Øº Ø¯Ø±ÛŒØ§ÙØªÛŒ (ØªÙˆÙ…Ø§Ù†)</label>
-                    <input type="number" id="p_paid" required>
-                </div>
+                
+                
+                
+                
+                
+                
                 <button type="submit" class="btn" id="p_btn">Ø«Ø¨Øª Ù…Ø³Ø§ÙØ±</button>
                 <button type="button" class="btn-cancel-edit" id="p_cancel_btn" onclick="resetParticipantForm()">Ù„ØºÙˆ ÙˆÛŒØ±Ø§ÛŒØ´</button>
             </form>
@@ -388,9 +718,7 @@
     <!-- Ø¬Ø¯ÙˆÙ„ Ù…Ø³Ø§ÙØ±Ø§Ù† -->
     <div class="card full-width">
         <h2>Ø¬Ø³ØªØ¬ÙˆÛŒ Ø³Ø±ÛŒØ¹ Ù…Ø³Ø§ÙØ±Ø§Ù†</h2>
-        <div class="form-group">
-            <input type="text" id="searchInput" placeholder="Ø¬Ø³ØªØ¬Ùˆ Ø¨Ø± Ø§Ø³Ø§Ø³ Ù†Ø§Ù…ØŒ Ú©Ø¯ Ù…Ù„ÛŒ ÛŒØ§ Ø´Ù…Ø§Ø±Ù‡ ØªÙ„ÙÙ†..." oninput="renderParticipants()">
-        </div>
+        
         <div class="table-responsive">
             <table>
                 <thead>
@@ -1088,17 +1416,6 @@ document.getElementById('t_car_fee').value = 0;
         const img = document.getElementById('receiptModalImg');
         if (!modal || !img) return;
         img.src = src;
-<div class=\"form-group\">
-    <label for=\"t_has_car_option\">Ù‚Ø§Ø¨Ù„ÛŒØª Ø®ÙˆØ¯Ø±ÙˆÛŒ Ø´Ø®ØµÛŒ/Ú¯Ø±ÙˆÙ‡ÛŒ</label>
-    <div class=\"form-check\">
-        <input class=\"form-check-input\" type=\"checkbox\" id=\"t_has_car_option\">
-    </div>
-</div>
-<div class=\"form-group\">
-    <label for=\"t_car_fee\">Ù…Ø¨Ù„Øº Ú©Ø±Ø§ÛŒÙ‡ Ù…Ø§Ø´ÛŒÙ† (ØªÙˆÙ…Ø§Ù†)</label>
-    <input type=\"number\" class=\"form-control\" id=\"t_car_fee\" placeholder=\"0\">
-</div>
-test
         modal.classList.add('show');
     }
 
@@ -1187,4 +1504,6 @@ const transportDisplay = p.transport_type === 'personal_car' ? 'ðŸš— Ù…�
 </script>
 </body>
 </html>
+
+
 
