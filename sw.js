@@ -33,7 +33,13 @@ self.addEventListener('fetch', (event) => {
     url.includes('/login') ||
     url.includes('/api/')
   ) {
-    return event.respondWith(fetch(event.request));
+    return event.respondWith(
+      fetch(event.request)
+        .then(response => {
+          if (!response.ok) throw new Error('API response not ok');
+          return response;
+        })
+    );
   }
 
   // Otherwise, try network then cache
@@ -45,6 +51,7 @@ self.addEventListener('fetch', (event) => {
           const responseClone = response.clone();
           caches.open(CACHE_NAME).then(cache => cache.put(event.request, responseClone));
         }
+        if (!response.ok) throw new Error('Network response not ok');
         return response;
       })
       .catch(() => caches.match(event.request))
