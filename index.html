@@ -1,9 +1,9 @@
-﻿ï»¿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ù…Ø¯ÛŒØ±ÛŒØª Ø³ÙØ±Ù‡Ø§ | Ú¯Ø±ÙˆÙ‡ Ú¯Ø±Ø¯Ø´Ú¯Ø±ÛŒ Ø§Ø¨Ø±Ù‡Ø§Ù…</title>
+    <title>مدیریت سفرها | گروه گردشگری ابرهام</title>
     <style>
         #loginModal {
             display: none;
@@ -60,7 +60,7 @@
     <meta name="theme-color" content="#00a693">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Ø§Ø¨Ø±Ù‡Ù…">
+    <meta name="apple-mobile-web-app-title" content="ابرهم">
     <meta name="mobile-web-app-capable" content="yes">
     <link rel="apple-touch-icon" href="logo.png">
     <link rel="icon" type="image/png" href="logo.png">
@@ -250,115 +250,115 @@
 <body>
 <div class="container">
     <header>
-        <h1>Ø³Ø§Ù…Ø§Ù†Ù‡ Ù…Ø¯ÛŒØ±ÛŒØª ØªÙˆØ± Ùˆ Ù…Ø³Ø§ÙØ±Ø§Ù† Ø§Ø¨Ø±Ù‡Ø§Ù…</h1>
-        <p style="font-size: 0.85rem; color: #6b7280;">Ø«Ø¨ØªØŒ ÙˆÛŒØ±Ø§ÛŒØ´ØŒ Ø­Ø°Ù Ùˆ Ù‡Ù…Ú¯Ø§Ù…â€ŒØ³Ø§Ø²ÛŒ Ø´Ø¨Ú©Ù‡</p>
+        <h1>سامانه مدیریت تور و مسافران ابرهام</h1>
+        <p style="font-size: 0.85rem; color: #6b7280;">ثبت، ویرایش، حذف و همگام‌سازی شبکه</p>
     </header>
 
     <div class="sync-bar">
         <div>
-            ÙˆØ¶Ø¹ÛŒØª Ø´Ø¨Ú©Ù‡:
-            <span id="connectionStatus" class="status-badge status-offline">Ø¯Ø± Ø­Ø§Ù„ Ø¨Ø±Ø±Ø³ÛŒ...</span>
+            وضعیت شبکه:
+            <span id="connectionStatus" class="status-badge status-offline">در حال بررسی...</span>
         </div>
-        <button class="btn-sync" onclick="syncData()">Ù‡Ù…Ú¯Ø§Ù…â€ŒØ³Ø§Ø²ÛŒ Ø¯Ø§Ø¯Ù‡â€ŒÙ‡Ø§ ðŸ”„</button>
+        <button class="btn-sync" onclick="syncData()">همگام‌سازی داده‌ها 🔄</button>
     </div>
 
     <div class="grid">
-        <!-- ÙØ±Ù… Ø«Ø¨Øª/ÙˆÛŒØ±Ø§ÛŒØ´ ØªÙˆØ± -->
+        <!-- فرم ثبت/ویرایش تور -->
         <div class="card">
-            <h2 id="tripFormTitle">Û±. Ø«Ø¨Øª ØªÙˆØ± Ø¬Ø¯ÛŒØ¯</h2>
+            <h2 id="tripFormTitle">۱. ثبت تور جدید</h2>
             <form id="tripForm" onsubmit="handleTripSubmit(event)">
                 <input type="hidden" id="t_id">
                 <div class="form-group">
-                    <label>Ø¹Ù†ÙˆØ§Ù† ØªÙˆØ±</label>
+                    <label>عنوان تور</label>
                     <input type="text" id="t_title" required>
                 </div>
                 <div class="form-group">
-                    <label>Ù…Ù‚ØµØ¯</label>
+                    <label>مقصد</label>
                     <input type="text" id="t_dest" required>
                 </div>
                 <div class="form-group">
-                    <label>ØªØ§Ø±ÛŒØ® Ø¨Ø±Ú¯Ø²Ø§Ø±ÛŒ</label>
-                    <input type="text" id="t_date" placeholder="Û±Û´Û°Ûµ/Û°Ûµ/Û²Û±" required>
+                    <label>تاریخ برگزاری</label>
+                    <input type="text" id="t_date" placeholder="۱۴۰۵/۰۵/۲۱" required>
                 </div>
                 <div class="form-group">
-                    <label>Ù‚ÛŒÙ…Øª ØªÙˆØ± (ØªÙˆÙ…Ø§Ù†)</label>
+                    <label>قیمت تور (تومان)</label>
                     <input type="number" id="t_price" required>
                 </div>
                 <div class="form-group">
-                    <label>Ø¸Ø±ÙÛŒØª (Û° = Ù†Ø§Ù…Ø­Ø¯ÙˆØ¯)</label>
+                    <label>ظرفیت (۰ = نامحدود)</label>
                     <input type="number" id="t_capacity" value="0" min="0">
                 </div>
                 <div class="form-group">
-                    <label>Ù„ÛŒÙ†Ú© Ú¯Ø±ÙˆÙ‡ Ù‡Ù…Ø§Ù‡Ù†Ú¯ÛŒ ØªÙ„Ú¯Ø±Ø§Ù… Ø³ÙØ±</label>
+                    <label>لینک گروه هماهنگی تلگرام سفر</label>
                     <input type="text" id="t_group" placeholder="https://t.me/...">
                 </div>
                 <div class="form-group">
-                    <label><input type="checkbox" id="t_has_car_option"> Ù‚Ø§Ø¨Ù„ÛŒØª Ø®ÙˆØ¯Ø±ÙˆÛŒ Ø´Ø®ØµÛŒ/Ú¯Ø±ÙˆÙ‡ÛŒ</label>
+                    <label><input type="checkbox" id="t_has_car_option"> قابلیت خودروی شخصی/گروهی</label>
                 </div>
                 <div class="form-group">
-                    <label>Ù…Ø¨Ù„Øº Ú©Ø±Ø§ÛŒÙ‡ Ù…Ø§Ø´ÛŒÙ† (ØªÙˆÙ…Ø§Ù†)</label>
+                    <label>مبلغ کرایه ماشین (تومان)</label>
                     <input type="number" id="t_car_fee" min="0">
                 </div>
-                <button type="submit" class="btn" id="t_btn">Ø«Ø¨Øª ØªÙˆØ±</button>
-                <button type="button" class="btn-cancel-edit" id="t_cancel_btn" onclick="resetTripForm()">Ù„ØºÙˆ ÙˆÛŒØ±Ø§ÛŒØ´</button>
+                <button type="submit" class="btn" id="t_btn">ثبت تور</button>
+                <button type="button" class="btn-cancel-edit" id="t_cancel_btn" onclick="resetTripForm()">لغو ویرایش</button>
             </form>
         </div>
 
-        <!-- ÙØ±Ù… Ø«Ø¨Øª/ÙˆÛŒØ±Ø§ÛŒØ´ Ù…Ø³Ø§ÙØ± -->
+        <!-- فرم ثبت/ویرایش مسافر -->
         <div class="card">
-            <h2 id="participantFormTitle">Û². Ø«Ø¨Øªâ€ŒÙ†Ø§Ù… Ù…Ø³Ø§ÙØ± Ø¬Ø¯ÛŒØ¯</h2>
+            <h2 id="participantFormTitle">۲. ثبت‌نام مسافر جدید</h2>
             <form id="participantForm" onsubmit="handleParticipantSubmit(event)">
                 <input type="hidden" id="p_id">
                 <div class="form-group">
-                    <label>Ø§Ù†ØªØ®Ø§Ø¨ ØªÙˆØ±</label>
+                    <label>انتخاب تور</label>
                     <select id="p_trip_id" required>
-                        <option value="">-- Ø§Ø¨ØªØ¯Ø§ ØªÙˆØ± Ø±Ø§ Ø§Ù†ØªØ®Ø§Ø¨ Ú©Ù†ÛŒØ¯ --</option>
+                        <option value="">-- ابتدا تور را انتخاب کنید --</option>
                     </select>
                 </div>
                 <div class="form-group">
-                    <label>Ù†Ø§Ù… Ùˆ Ù†Ø§Ù… Ø®Ø§Ù†ÙˆØ§Ø¯Ú¯ÛŒ</label>
+                    <label>نام و نام خانوادگی</label>
                     <input type="text" id="p_name" required>
                 </div>
                 <div class="form-group">
-                    <label>Ú©Ø¯ Ù…Ù„ÛŒ</label>
+                    <label>کد ملی</label>
                     <input type="text" id="p_national_id" required>
                 </div>
                 <div class="form-group">
-                    <label>Ø´Ù…Ø§Ø±Ù‡ ØªÙ…Ø§Ø³</label>
+                    <label>شماره تماس</label>
                     <input type="text" id="p_phone" required>
                 </div>
                 <div class="form-group">
-                    <label>ÙˆØ¶Ø¹ÛŒØª Ù¾Ø±Ø¯Ø§Ø®Øª</label>
+                    <label>وضعیت پرداخت</label>
                     <select id="p_status" required>
-                        <option value="Ù¾Ø±Ø¯Ø§Ø®Øª Ø¨ÛŒØ¹Ø§Ù†Ù‡">Ù¾Ø±Ø¯Ø§Ø®Øª Ø¨ÛŒØ¹Ø§Ù†Ù‡</option>
-                        <option value="Ù¾Ø±Ø¯Ø§Ø®Øª Ú©Ø§Ù…Ù„">Ù¾Ø±Ø¯Ø§Ø®Øª Ú©Ø§Ù…Ù„</option>
+                        <option value="پرداخت بیعانه">پرداخت بیعانه</option>
+                        <option value="پرداخت کامل">پرداخت کامل</option>
                     </select>
                 </div>
                 <div class="form-group">
-                    <label>Ù…Ø¨Ù„Øº Ø¯Ø±ÛŒØ§ÙØªÛŒ (ØªÙˆÙ…Ø§Ù†)</label>
+                    <label>مبلغ دریافتی (تومان)</label>
                     <input type="number" id="p_paid" required>
                 </div>
-                <button type="submit" class="btn" id="p_btn">Ø«Ø¨Øª Ù…Ø³Ø§ÙØ±</button>
-                <button type="button" class="btn-cancel-edit" id="p_cancel_btn" onclick="resetParticipantForm()">Ù„ØºÙˆ ÙˆÛŒØ±Ø§ÛŒØ´</button>
+                <button type="submit" class="btn" id="p_btn">ثبت مسافر</button>
+                <button type="button" class="btn-cancel-edit" id="p_cancel_btn" onclick="resetParticipantForm()">لغو ویرایش</button>
             </form>
         </div>
     </div>
 
-    <!-- Ø¬Ø¯ÙˆÙ„ ØªÙˆØ±Ù‡Ø§ÛŒ ÙØ¹Ø§Ù„ -->
+    <!-- جدول تورهای فعال -->
     <div class="card full-width" style="margin-bottom: 15px;">
-        <h2>ðŸ“Œ Ø³ÙØ±Ù‡Ø§ÛŒ ÙØ¹Ø§Ù„</h2>
+        <h2>📌 سفرهای فعال</h2>
         <div class="table-responsive">
             <table>
                 <thead>
                     <tr>
-                        <th>Ø¹Ù†ÙˆØ§Ù† ØªÙˆØ±</th>
-                        <th>Ù…Ù‚ØµØ¯</th>
-                        <th>ØªØ§Ø±ÛŒØ®</th>
-                        <th>Ù‚ÛŒÙ…Øª ØªÙˆØ±</th>
-                        <th>Ø¸Ø±ÙÛŒØª</th>
-                        <th>ØªØ¹Ø¯Ø§Ø¯ Ù…Ø³Ø§ÙØ±</th>
-                        <th>Ø¬Ù…Ø¹ Ú©Ù„ Ø¯Ø±ÛŒØ§ÙØªÛŒ</th>
-                        <th>Ø¹Ù…Ù„ÛŒØ§Øª</th>
+                        <th>عنوان تور</th>
+                        <th>مقصد</th>
+                        <th>تاریخ</th>
+                        <th>قیمت تور</th>
+                        <th>ظرفیت</th>
+                        <th>تعداد مسافر</th>
+                        <th>جمع کل دریافتی</th>
+                        <th>عملیات</th>
                     </tr>
                 </thead>
                 <tbody id="tripsTable"></tbody>
@@ -366,18 +366,18 @@
         </div>
     </div>
 
-    <!-- Ø¬Ø¯ÙˆÙ„ Ø³ÙØ±Ù‡Ø§ÛŒ Ø¨Ø±Ú¯Ø²Ø§Ø±Ø´Ø¯Ù‡ -->
+    <!-- جدول سفرهای برگزارشده -->
     <div class="card full-width" style="margin-bottom: 15px;">
-        <h2>ðŸ Ø³ÙØ±Ù‡Ø§ÛŒ Ø¨Ø±Ú¯Ø²Ø§Ø±Ø´Ø¯Ù‡</h2>
+        <h2>🏁 سفرهای برگزارشده</h2>
         <div class="table-responsive">
             <table>
                 <thead>
                     <tr>
-                        <th>Ø¹Ù†ÙˆØ§Ù† ØªÙˆØ±</th>
-                        <th>Ù…Ù‚ØµØ¯</th>
-                        <th>ØªØ§Ø±ÛŒØ® Ø¨Ø±Ú¯Ø²Ø§Ø±ÛŒ</th>
-                        <th>ØªØ¹Ø¯Ø§Ø¯ Ù…Ø³Ø§ÙØ±</th>
-                        <th>Ú¯Ø²Ø§Ø±Ø´</th>
+                        <th>عنوان تور</th>
+                        <th>مقصد</th>
+                        <th>تاریخ برگزاری</th>
+                        <th>تعداد مسافر</th>
+                        <th>گزارش</th>
                     </tr>
                 </thead>
                 <tbody id="completedTripsTable"></tbody>
@@ -385,23 +385,23 @@
         </div>
     </div>
 
-    <!-- Ø¬Ø¯ÙˆÙ„ Ù…Ø³Ø§ÙØ±Ø§Ù† -->
+    <!-- جدول مسافران -->
     <div class="card full-width">
-        <h2>Ø¬Ø³ØªØ¬ÙˆÛŒ Ø³Ø±ÛŒØ¹ Ù…Ø³Ø§ÙØ±Ø§Ù†</h2>
+        <h2>جستجوی سریع مسافران</h2>
         <div class="form-group">
-            <input type="text" id="searchInput" placeholder="Ø¬Ø³ØªØ¬Ùˆ Ø¨Ø± Ø§Ø³Ø§Ø³ Ù†Ø§Ù…ØŒ Ú©Ø¯ Ù…Ù„ÛŒ ÛŒØ§ Ø´Ù…Ø§Ø±Ù‡ ØªÙ„ÙÙ†..." oninput="renderParticipants()">
+            <input type="text" id="searchInput" placeholder="جستجو بر اساس نام، کد ملی یا شماره تلفن..." oninput="renderParticipants()">
         </div>
         <div class="table-responsive">
             <table>
                 <thead>
                     <tr>
-                        <th>Ù†Ø§Ù… Ù…Ø³Ø§ÙØ±</th>
-                        <th>Ú©Ø¯ Ù…Ù„ÛŒ</th>
-                        <th>ØªÙ„ÙÙ†</th>
-                        <th>ØªÙˆØ±</th>
-                        <th>ÙˆØ¶Ø¹ÛŒØª Ù¾Ø±Ø¯Ø§Ø®Øª</th>
-                        <th>Ù…Ø¨Ù„Øº Ø¯Ø±ÛŒØ§ÙØªÛŒ</th>
-                        <th>Ø¹Ù…Ù„ÛŒØ§Øª</th>
+                        <th>نام مسافر</th>
+                        <th>کد ملی</th>
+                        <th>تلفن</th>
+                        <th>تور</th>
+                        <th>وضعیت پرداخت</th>
+                        <th>مبلغ دریافتی</th>
+                        <th>عملیات</th>
                     </tr>
                 </thead>
                 <tbody id="participantsTable"></tbody>
@@ -409,71 +409,71 @@
         </div>
     </div>
 
-    <!-- Ø¨Ø±Ø±Ø³ÛŒ Ù¾Ø±Ø¯Ø§Ø®Øªâ€ŒÙ‡Ø§ -->
+    <!-- بررسی پرداخت‌ها -->
     <div class="card full-width" style="margin-top: 15px;">
-        <h2>ðŸ’³ Ø¨Ø±Ø±Ø³ÛŒ Ù¾Ø±Ø¯Ø§Ø®Øªâ€ŒÙ‡Ø§</h2>
+        <h2>💳 بررسی پرداخت‌ها</h2>
 
         <div class="payments-filter">
-            <button class="filter-btn active" data-status="" onclick="setPaymentFilter('')">Ù‡Ù…Ù‡</button>
-            <button class="filter-btn" data-status="pending_review" onclick="setPaymentFilter('pending_review')">â³ Ø¯Ø± Ø§Ù†ØªØ¸Ø§Ø± Ø¨Ø±Ø±Ø³ÛŒ</button>
-            <button class="filter-btn" data-status="confirmed" onclick="setPaymentFilter('confirmed')">âœ… ØªØ£ÛŒÛŒØ¯ Ø´Ø¯Ù‡</button>
-            <button class="filter-btn" data-status="rejected" onclick="setPaymentFilter('rejected')">âŒ Ø±Ø¯ Ø´Ø¯Ù‡</button>
+            <button class="filter-btn active" data-status="" onclick="setPaymentFilter('')">همه</button>
+            <button class="filter-btn" data-status="pending_review" onclick="setPaymentFilter('pending_review')">⏳ در انتظار بررسی</button>
+            <button class="filter-btn" data-status="confirmed" onclick="setPaymentFilter('confirmed')">✅ تأیید شده</button>
+            <button class="filter-btn" data-status="rejected" onclick="setPaymentFilter('rejected')">❌ رد شده</button>
         </div>
 
         <div class="table-responsive">
             <table>
                 <thead>
                     <tr>
-                        <th>Ø´Ù…Ø§Ø±Ù‡</th>
-                        <th>Ø´Ø±Ú©Øªâ€ŒÚ©Ù†Ù†Ø¯Ù‡</th>
-                        <th>ØªÙˆØ±</th>
-                        <th>Ù†ÙˆØ¹ Ù¾Ø±Ø¯Ø§Ø®Øª</th>
-                        <th>Ù…Ø¨Ù„Øº</th>
-                        <th>ÙˆØ¶Ø¹ÛŒØª</th>
-                        <th>ØªØ§Ø±ÛŒØ® Ø§Ø±Ø³Ø§Ù„</th>
-                        <th>ØªØ§Ø±ÛŒØ® Ø¨Ø±Ø±Ø³ÛŒ</th>
-                        <th>ÙÛŒØ´</th>
-                        <th>Ø¹Ù…Ù„ÛŒØ§Øª</th>
+                        <th>شماره</th>
+                        <th>شرکت‌کننده</th>
+                        <th>تور</th>
+                        <th>نوع پرداخت</th>
+                        <th>مبلغ</th>
+                        <th>وضعیت</th>
+                        <th>تاریخ ارسال</th>
+                        <th>تاریخ بررسی</th>
+                        <th>فیش</th>
+                        <th>عملیات</th>
                     </tr>
                 </thead>
                 <tbody id="paymentsTable"></tbody>
             </table>
         </div>
-        <div id="paymentsStatus" class="payments-loading">Ø¯Ø± Ø­Ø§Ù„ Ø¯Ø±ÛŒØ§ÙØª Ù¾Ø±Ø¯Ø§Ø®Øªâ€ŒÙ‡Ø§...</div>
+        <div id="paymentsStatus" class="payments-loading">در حال دریافت پرداخت‌ها...</div>
     </div>
 </div>
 
-<!-- Modal Ù†Ù…Ø§ÛŒØ´ ÙÛŒØ´ Ø¨Ø²Ø±Ú¯ -->
+<!-- Modal نمایش فیش بزرگ -->
 <div class="modal-overlay" id="receiptModal" onclick="closeReceiptModal()">
     <div class="modal-content" onclick="event.stopPropagation()">
-        <button class="modal-close" onclick="closeReceiptModal()">âœ•</button>
-        <img id="receiptModalImg" src="" alt="ÙÛŒØ´ Ù¾Ø±Ø¯Ø§Ø®Øª" onerror="this.onerror=null; this.src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg'">
+        <button class="modal-close" onclick="closeReceiptModal()">✕</button>
+        <img id="receiptModalImg" src="" alt="فیش پرداخت" onerror="this.onerror=null; this.src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg'">
     </div>
 </div>
 
-<!-- Modal Ù„ÛŒØ³Øª Ø´Ø±Ú©Øªâ€ŒÚ©Ù†Ù†Ø¯Ú¯Ø§Ù† Ù‡Ø± ØªÙˆØ± -->
+<!-- Modal لیست شرکت‌کنندگان هر تور -->
 <div class="modal-overlay" id="tripParticipantsModal" onclick="closeTripParticipantsModal()">
     <div class="modal-content" onclick="event.stopPropagation()">
-        <button class="modal-close" onclick="closeTripParticipantsModal()">âœ•</button>
-        <h2 id="tripParticipantsTitle" style="margin-top: 0; color: var(--primary);">Ø´Ø±Ú©Øªâ€ŒÚ©Ù†Ù†Ø¯Ú¯Ø§Ù† ØªÙˆØ±</h2>
+        <button class="modal-close" onclick="closeTripParticipantsModal()">✕</button>
+        <h2 id="tripParticipantsTitle" style="margin-top: 0; color: var(--primary);">شرکت‌کنندگان تور</h2>
         <div class="table-responsive">
             <table>
                 <thead>
                     <tr>
-                        <th>Ø±Ø¯ÛŒÙ</th>
-                        <th>Ù†Ø§Ù… Ùˆ Ù†Ø§Ù… Ø®Ø§Ù†ÙˆØ§Ø¯Ú¯ÛŒ</th>
-                        <th>Ú©Ø¯ Ù…Ù„ÛŒ</th>
-                        <th>Ø´Ù…Ø§Ø±Ù‡ Ù…ÙˆØ¨Ø§ÛŒÙ„</th>
-                        <th>Ù†ÙˆØ¹ Ø±ÙØªâ€ŒÙˆØ¢Ù…Ø¯</th>
-                        <th>ÙˆØ¶Ø¹ÛŒØª Ù¾Ø±Ø¯Ø§Ø®Øª</th>
-                        <th>Ù…Ø¨Ù„Øº Ø¯Ø±ÛŒØ§ÙØªÛŒ</th>
-                        <th>Ù…Ø¨Ù„Øº Ø¨Ø§Ù‚ÛŒâ€ŒÙ…Ø§Ù†Ø¯Ù‡</th>
+                        <th>ردیف</th>
+                        <th>نام و نام خانوادگی</th>
+                        <th>کد ملی</th>
+                        <th>شماره موبایل</th>
+                        <th>نوع رفت‌وآمد</th>
+                        <th>وضعیت پرداخت</th>
+                        <th>مبلغ دریافتی</th>
+                        <th>مبلغ باقی‌مانده</th>
                     </tr>
                 </thead>
                 <tbody id="tripParticipantsTable"></tbody>
             </table>
         </div>
-        <div id="tripParticipantsStatus" class="payments-loading">Ø¯Ø± Ø­Ø§Ù„ Ø¯Ø±ÛŒØ§ÙØª Ø´Ø±Ú©Øªâ€ŒÚ©Ù†Ù†Ø¯Ú¯Ø§Ù†...</div>
+        <div id="tripParticipantsStatus" class="payments-loading">در حال دریافت شرکت‌کنندگان...</div>
     </div>
 </div>
 
@@ -483,7 +483,7 @@
     let allTrips = [];
     let allParticipants = [];
 
-    // Û±. Ø±Ø§Ù‡ Ø§Ù†Ø¯Ø§Ø²ÛŒ IndexedDB
+    // ۱. راه اندازی IndexedDB
     const request = indexedDB.open("AbarhamSyncDB", 2);
 
     request.onupgradeneeded = (e) => {
@@ -502,11 +502,11 @@
     };
 
     request.onerror = () => {
-        console.error("Ø®Ø·Ø§ Ø¯Ø± Ø±Ø§Ù‡â€ŒØ§Ù†Ø¯Ø§Ø²ÛŒ IndexedDB");
+        console.error("خطا در راه‌اندازی IndexedDB");
         checkServerStatus().then(syncData);
     };
 
-    // Û². Ø¨Ø±Ø±Ø³ÛŒ ÙˆØ¶Ø¹ÛŒØª Ø§ØªØµØ§Ù„
+    // ۲. بررسی وضعیت اتصال
     async function checkServerStatus() {
         const badge = document.getElementById('connectionStatus');
         try {
@@ -514,14 +514,14 @@
             if (res.ok) {
                 isServerOnline = true;
                 if (badge) {
-                    badge.textContent = 'Ø¢Ù†Ù„Ø§ÛŒÙ† (Ù…ØªØµÙ„ Ø¨Ù‡ Ø³Ø±ÙˆØ±)';
+                    badge.textContent = 'آنلاین (متصل به سرور)';
                     badge.style.backgroundColor = '#2e7d32';
                     badge.style.color = '#ffffff';
                 }
             } else if (res.status === 401) {
                 isServerOnline = true;
                 if (badge) {
-                    badge.textContent = 'Ø¢Ù†Ù„Ø§ÛŒÙ† (Ù†ÛŒØ§Ø² Ø¨Ù‡ ÙˆØ±ÙˆØ¯)';
+                    badge.textContent = 'آنلاین (نیاز به ورود)';
                     badge.style.backgroundColor = '#ff9800';
                     badge.style.color = '#ffffff';
                 }
@@ -532,19 +532,19 @@
         } catch (err) {
             isServerOnline = false;
             if (badge) {
-                badge.textContent = 'Ø­Ø§Ù„Øª Ø¢ÙÙ„Ø§ÛŒÙ† (Ø°Ø®ÛŒØ±Ù‡ Ù…Ø­Ù„ÛŒ)';
+                badge.textContent = 'حالت آفلاین (ذخیره محلی)';
                 badge.style.backgroundColor = '#c62828';
                 badge.style.color = '#ffffff';
             }
         }
     }
 
-    // Û³. Ø«Ø¨Øª Ùˆ ÙˆÛŒØ±Ø§ÛŒØ´ ØªÙˆØ± (ÛŒÚ©Ù¾Ø§Ø±Ú†Ù‡)
+    // ۳. ثبت و ویرایش تور (یکپارچه)
     async function handleTripSubmit(e) {
         e.preventDefault();
 
         if (!isServerOnline) {
-            alert("Ø¨Ø±Ø§ÛŒ Ø«Ø¨Øª ÛŒØ§ ÙˆÛŒØ±Ø§ÛŒØ´ Ø§Ø·Ù„Ø§Ø¹Ø§Øª Ø¨Ø§ÛŒØ¯ Ø¨Ù‡ Ø§ÛŒÙ†ØªØ±Ù†Øª Ù…ØªØµÙ„ Ø¨Ø§Ø´ÛŒØ¯.");
+            alert("برای ثبت یا ویرایش اطلاعات باید به اینترنت متصل باشید.");
             return;
         }
 
@@ -573,30 +573,30 @@ credentials: 'include',
             });
 
             if (res.ok) {
-                alert(tripId ? "ØªÙˆØ± Ø¨Ø±ÙˆØ²Ø±Ø³Ø§Ù†ÛŒ Ø´Ø¯!" : "ØªÙˆØ± Ø¬Ø¯ÛŒØ¯ Ø¨Ø§ Ù…ÙˆÙÙ‚ÛŒØª Ø«Ø¨Øª Ø´Ø¯!");
+                alert(tripId ? "تور بروزرسانی شد!" : "تور جدید با موفقیت ثبت شد!");
                 resetTripForm();
                 syncData();
             } else {
                 const errData = await res.json();
-                alert("Ø®Ø·Ø§ Ø¯Ø± Ø«Ø¨Øª ØªÙˆØ±: " + JSON.stringify(errData));
+                alert("خطا در ثبت تور: " + JSON.stringify(errData));
             }
         } catch (err) {
-            alert("Ø®Ø·Ø§ Ø¯Ø± Ø§Ø±ØªØ¨Ø§Ø· Ø¨Ø§ Ø³Ø±ÙˆØ±.");
+            alert("خطا در ارتباط با سرور.");
         }
     }
 
-    // Û´. Ø«Ø¨Øª Ùˆ ÙˆÛŒØ±Ø§ÛŒØ´ Ù…Ø³Ø§ÙØ± (ÛŒÚ©Ù¾Ø§Ø±Ú†Ù‡)
+    // ۴. ثبت و ویرایش مسافر (یکپارچه)
     async function handleParticipantSubmit(e) {
         e.preventDefault();
 
         if (!isServerOnline) {
-            alert("Ø¨Ø±Ø§ÛŒ Ø«Ø¨Øª ÛŒØ§ ÙˆÛŒØ±Ø§ÛŒØ´ Ø§Ø·Ù„Ø§Ø¹Ø§Øª Ø¨Ø§ÛŒØ¯ Ø¨Ù‡ Ø§ÛŒÙ†ØªØ±Ù†Øª Ù…ØªØµÙ„ Ø¨Ø§Ø´ÛŒØ¯.");
+            alert("برای ثبت یا ویرایش اطلاعات باید به اینترنت متصل باشید.");
             return;
         }
 
         const tripId = document.getElementById('p_trip_id').value;
         if (!tripId) {
-            alert("Ù„Ø·ÙØ§Ù‹ Ø§Ø¨ØªØ¯Ø§ ÛŒÚ© ØªÙˆØ± Ø§Ù†ØªØ®Ø§Ø¨ Ú©Ù†ÛŒØ¯.");
+            alert("لطفاً ابتدا یک تور انتخاب کنید.");
             return;
         }
 
@@ -622,59 +622,59 @@ credentials: 'include',
         });
 
             if (res.ok) {
-                alert(participantId ? "Ø§Ø·Ù„Ø§Ø¹Ø§Øª Ù…Ø³Ø§ÙØ± Ø¨Ø±ÙˆØ²Ø±Ø³Ø§Ù†ÛŒ Ø´Ø¯!" : "Ù…Ø³Ø§ÙØ± Ø¬Ø¯ÛŒØ¯ Ø¨Ø§ Ù…ÙˆÙÙ‚ÛŒØª Ø«Ø¨Øª Ø´Ø¯!");
+                alert(participantId ? "اطلاعات مسافر بروزرسانی شد!" : "مسافر جدید با موفقیت ثبت شد!");
                 resetParticipantForm();
                 syncData();
             } else {
                 const errData = await res.json();
-                alert("Ø®Ø·Ø§ Ø¯Ø± Ø«Ø¨Øª Ù…Ø³Ø§ÙØ±: " + JSON.stringify(errData));
+                alert("خطا در ثبت مسافر: " + JSON.stringify(errData));
             }
         } catch (err) {
-            alert("Ø®Ø·Ø§ Ø¯Ø± Ø§Ø±ØªØ¨Ø§Ø· Ø¨Ø§ Ø³Ø±ÙˆØ±.");
+            alert("خطا در ارتباط با سرور.");
         }
     }
 
-    // Ûµ. Ø­Ø°Ù ØªÙˆØ±
+    // ۵. حذف تور
     async function deleteTrip(id) {
-        if (!confirm("Ø¢ÛŒØ§ Ø§Ø² Ø­Ø°Ù Ø§ÛŒÙ† ØªÙˆØ± Ùˆ ØªÙ…Ø§Ù… Ù…Ø³Ø§ÙØ±Ø§Ù† Ø¢Ù† Ø§Ø·Ù…ÛŒÙ†Ø§Ù† Ø¯Ø§Ø±ÛŒØ¯ØŸ")) return;
+        if (!confirm("آیا از حذف این تور و تمام مسافران آن اطمینان دارید؟")) return;
         if (!isServerOnline) {
-            alert("Ø¨Ø±Ø§ÛŒ Ø­Ø°Ù Ø¨Ø§ÛŒØ¯ Ø¨Ù‡ Ø³Ø±ÙˆØ± Ù…ØªØµÙ„ Ø¨Ø§Ø´ÛŒØ¯.");
+            alert("برای حذف باید به سرور متصل باشید.");
             return;
         }
         try {
             const res = await fetch(`/trips/${id}`, { method: 'DELETE', credentials: 'include' });
             if (res.ok) {
-                alert("ØªÙˆØ± Ø­Ø°Ù Ø´Ø¯!");
+                alert("تور حذف شد!");
                 syncData();
             } else {
-                alert("Ø®Ø·Ø§ Ø¯Ø± Ø­Ø°Ù ØªÙˆØ±.");
+                alert("خطا در حذف تور.");
             }
         } catch (err) {
-            alert("Ø®Ø·Ø§ Ø¯Ø± Ø§Ø±ØªØ¨Ø§Ø· Ø¨Ø§ Ø³Ø±ÙˆØ±.");
+            alert("خطا در ارتباط با سرور.");
         }
     }
 
-    // Û¶. Ø­Ø°Ù Ù…Ø³Ø§ÙØ±
+    // ۶. حذف مسافر
     async function deleteParticipant(id) {
-        if (!confirm("Ø¢ÛŒØ§ Ø§Ø² Ø­Ø°Ù Ø§ÛŒÙ† Ù…Ø³Ø§ÙØ± Ø§Ø·Ù…ÛŒÙ†Ø§Ù† Ø¯Ø§Ø±ÛŒØ¯ØŸ")) return;
+        if (!confirm("آیا از حذف این مسافر اطمینان دارید؟")) return;
         if (!isServerOnline) {
-            alert("Ø¨Ø±Ø§ÛŒ Ø­Ø°Ù Ø¨Ø§ÛŒØ¯ Ø¨Ù‡ Ø³Ø±ÙˆØ± Ù…ØªØµÙ„ Ø¨Ø§Ø´ÛŒØ¯.");
+            alert("برای حذف باید به سرور متصل باشید.");
             return;
         }
         try {
             const res = await fetch(`/participants/${id}`, { method: 'DELETE', credentials: 'include' });
             if (res.ok) {
-                alert("Ù…Ø³Ø§ÙØ± Ø¨Ø§ Ù…ÙˆÙÙ‚ÛŒØª Ø­Ø°Ù Ø´Ø¯.");
+                alert("مسافر با موفقیت حذف شد.");
                 syncData();
             } else {
-                alert("Ø®Ø·Ø§ Ø¯Ø± Ø­Ø°Ù Ù…Ø³Ø§ÙØ±.");
+                alert("خطا در حذف مسافر.");
             }
         } catch (err) {
-            alert("Ø®Ø·Ø§ Ø¯Ø± Ø§Ø±ØªØ¨Ø§Ø· Ø¨Ø§ Ø³Ø±ÙˆØ±.");
+            alert("خطا در ارتباط با سرور.");
         }
     }
 
-    // Û·. ÙˆÛŒØ±Ø§ÛŒØ´ ØªÙˆØ± â€” Ù¾Ø± Ú©Ø±Ø¯Ù† ÙØ±Ù… Ø¨Ø§ Ø¯Ø§Ø¯Ù‡â€ŒÙ‡Ø§ÛŒ Ù…ÙˆØ¬ÙˆØ¯
+    // ۷. ویرایش تور — پر کردن فرم با داده‌های موجود
     function editTrip(id) {
         const trip = allTrips.find(t => t.id === id);
         if (!trip) return;
@@ -689,14 +689,14 @@ credentials: 'include',
 document.getElementById('t_has_car_option').checked = trip.has_car_option || false;
          document.getElementById('t_car_fee').value = trip.car_fee || 0;
 
-        document.getElementById('tripFormTitle').textContent = 'Û±. ÙˆÛŒØ±Ø§ÛŒØ´ ØªÙˆØ±';
-        document.getElementById('t_btn').textContent = 'Ø°Ø®ÛŒØ±Ù‡ ØªØºÛŒÛŒØ±Ø§Øª';
+        document.getElementById('tripFormTitle').textContent = '۱. ویرایش تور';
+        document.getElementById('t_btn').textContent = 'ذخیره تغییرات';
         document.getElementById('t_cancel_btn').style.display = 'block';
 
         document.getElementById('tripForm').scrollIntoView({ behavior: 'smooth' });
     }
 
-    // Û¸. ÙˆÛŒØ±Ø§ÛŒØ´ Ù…Ø³Ø§ÙØ± â€” Ù¾Ø± Ú©Ø±Ø¯Ù† ÙØ±Ù… Ø¨Ø§ Ø¯Ø§Ø¯Ù‡â€ŒÙ‡Ø§ÛŒ Ù…ÙˆØ¬ÙˆØ¯
+    // ۸. ویرایش مسافر — پر کردن فرم با داده‌های موجود
     function editParticipant(id) {
         const p = allParticipants.find(p => p.id === id);
         if (!p) return;
@@ -706,11 +706,11 @@ document.getElementById('t_has_car_option').checked = trip.has_car_option || fal
         document.getElementById('p_name').value = p.full_name || '';
         document.getElementById('p_national_id').value = p.national_id || '';
         document.getElementById('p_phone').value = p.phone_number || '';
-        document.getElementById('p_status').value = p.payment_status || 'Ù¾Ø±Ø¯Ø§Ø®Øª Ø¨ÛŒØ¹Ø§Ù†Ù‡';
+        document.getElementById('p_status').value = p.payment_status || 'پرداخت بیعانه';
         document.getElementById('p_paid').value = p.paid_amount || 0;
 
-        document.getElementById('participantFormTitle').textContent = 'Û². ÙˆÛŒØ±Ø§ÛŒØ´ Ù…Ø³Ø§ÙØ±';
-        document.getElementById('p_btn').textContent = 'Ø°Ø®ÛŒØ±Ù‡ ØªØºÛŒÛŒØ±Ø§Øª';
+        document.getElementById('participantFormTitle').textContent = '۲. ویرایش مسافر';
+        document.getElementById('p_btn').textContent = 'ذخیره تغییرات';
         document.getElementById('p_cancel_btn').style.display = 'block';
 
         document.getElementById('participantForm').scrollIntoView({ behavior: 'smooth' });
@@ -722,20 +722,20 @@ document.getElementById('t_has_car_option').checked = false;
 document.getElementById('t_car_fee').value = 0;
         document.getElementById('t_id').value = '';
         document.getElementById('t_capacity').value = 0;
-        document.getElementById('tripFormTitle').textContent = 'Û±. Ø«Ø¨Øª ØªÙˆØ± Ø¬Ø¯ÛŒØ¯';
-        document.getElementById('t_btn').textContent = 'Ø«Ø¨Øª ØªÙˆØ±';
+        document.getElementById('tripFormTitle').textContent = '۱. ثبت تور جدید';
+        document.getElementById('t_btn').textContent = 'ثبت تور';
         document.getElementById('t_cancel_btn').style.display = 'none';
     }
 
     function resetParticipantForm() {
         document.getElementById('participantForm').reset();
         document.getElementById('p_id').value = '';
-        document.getElementById('participantFormTitle').textContent = 'Û². Ø«Ø¨Øªâ€ŒÙ†Ø§Ù… Ù…Ø³Ø§ÙØ± Ø¬Ø¯ÛŒØ¯';
-        document.getElementById('p_btn').textContent = 'Ø«Ø¨Øª Ù…Ø³Ø§ÙØ±';
+        document.getElementById('participantFormTitle').textContent = '۲. ثبت‌نام مسافر جدید';
+        document.getElementById('p_btn').textContent = 'ثبت مسافر';
         document.getElementById('p_cancel_btn').style.display = 'none';
     }
 
-    // Û¹. Ø¯Ø±ÛŒØ§ÙØª Ø¯Ø§Ø¯Ù‡â€ŒÙ‡Ø§ Ø§Ø² Ø³Ø±ÙˆØ± Ùˆ Ù†Ù…Ø§ÛŒØ´ Ø±ÙˆÛŒ Ø¬Ø¯ÙˆÙ„
+    // ۹. دریافت داده‌ها از سرور و نمایش روی جدول
     async function syncData() {
         if (!isServerOnline) {
             loadLocalData();
@@ -780,7 +780,7 @@ document.getElementById('t_car_fee').value = 0;
             renderParticipants();
             if (isServerOnline) loadPayments();
         } catch (err) {
-            console.error("Ø®Ø·Ø§ Ø¯Ø± Ø¯Ø±ÛŒØ§ÙØª Ø¯Ø§Ø¯Ù‡â€ŒÙ‡Ø§:", err);
+            console.error("خطا در دریافت داده‌ها:", err);
             loadLocalData();
         }
     }
@@ -809,12 +809,12 @@ document.getElementById('t_car_fee').value = 0;
 
         tripsTable.innerHTML = '';
         if (completedTripsTable) completedTripsTable.innerHTML = '';
-        if (tripSelect) tripSelect.innerHTML = '<option value="">-- Ø§Ù†ØªØ®Ø§Ø¨ ØªÙˆØ± --</option>';
+        if (tripSelect) tripSelect.innerHTML = '<option value="">-- انتخاب تور --</option>';
 
         const activeTrips = allTrips.filter(t => (t.status || 'active') === 'active');
         const completedTrips = allTrips.filter(t => (t.status || 'active') === 'completed');
 
-        // Ø±Ø¯ÛŒÙ Ø³ÙØ±Ù‡Ø§ÛŒ ÙØ¹Ø§Ù„ - Ø¯Ø±ÛŒØ§ÙØª Ø¬Ù…Ø¹ Ø¯Ø±ÛŒØ§ÙØªÛŒ Ø§Ø² Ø³Ø±ÙˆØ±
+        // ردیف سفرهای فعال - دریافت جمع دریافتی از سرور
         const totalReceivedPromises = activeTrips.map(async (t) => {
             try {
                 const res = await fetch(`/trips/${t.id}/total_received`, { credentials: 'include' });
@@ -823,7 +823,7 @@ document.getElementById('t_car_fee').value = 0;
                     return { tripId: t.id, total: data.total_received || 0 };
                 }
             } catch (err) {
-                console.error('Ø®Ø·Ø§ Ø¯Ø± Ø¯Ø±ÛŒØ§ÙØª Ø¬Ù…Ø¹ Ø¯Ø±ÛŒØ§ÙØªÛŒ ØªÙˆØ±:', err);
+                console.error('خطا در دریافت جمع دریافتی تور:', err);
             }
             return { tripId: t.id, total: 0 };
         });
@@ -837,7 +837,7 @@ document.getElementById('t_car_fee').value = 0;
             activeTrips.forEach((t, index) => {
                 const filteredParts = allParticipants.filter(p => p.trip_id === t.id);
                 const totalCollected = totalReceivedMap[t.id] !== undefined ? totalReceivedMap[t.id] : 0;
-                const capacityText = t.capacity ? `${filteredParts.length} / ${t.capacity}` : `${filteredParts.length} (Ù†Ø§Ù…Ø­Ø¯ÙˆØ¯)`;
+                const capacityText = t.capacity ? `${filteredParts.length} / ${t.capacity}` : `${filteredParts.length} (نامحدود)`;
 
             tripsTable.innerHTML += `
                 <tr>
@@ -845,19 +845,19 @@ document.getElementById('t_car_fee').value = 0;
                     <td><strong>${t.title}</strong></td>
                     <td>${t.destination || '-'}</td>
                     <td>${t.date || '-'}</td>
-                    <td>${(t.price || 0).toLocaleString()} ØªÙˆÙ…Ø§Ù†</td>
+                    <td>${(t.price || 0).toLocaleString()} تومان</td>
                     <td>${capacityText}</td>
-                    <td>${filteredParts.length} Ù†ÙØ±</td>
-                    <td style="color: #00796b; font-weight: bold;">${totalCollected.toLocaleString()} ØªÙˆÙ…Ø§Ù†</td>
+                    <td>${filteredParts.length} نفر</td>
+                    <td style="color: #00796b; font-weight: bold;">${totalCollected.toLocaleString()} تومان</td>
                     <td>
-                        <button class="btn-action btn-view" onclick="showTripParticipants(${t.id})">ðŸ‘¥ Ø´Ø±Ú©Øªâ€ŒÚ©Ù†Ù†Ø¯Ú¯Ø§Ù†</button>
-                        <button class="btn-action btn-edit" onclick="editTrip(${t.id})">ÙˆÛŒØ±Ø§ÛŒØ´</button>
-                        <button class="btn-action btn-delete" onclick="deleteTrip(${t.id})">Ø­Ø°Ù</button>
+                        <button class="btn-action btn-view" onclick="showTripParticipants(${t.id})">👥 شرکت‌کنندگان</button>
+                        <button class="btn-action btn-edit" onclick="editTrip(${t.id})">ویرایش</button>
+                        <button class="btn-action btn-delete" onclick="deleteTrip(${t.id})">حذف</button>
                     </td>
                 </tr>
             `;
 
-            // ÙÙ‚Ø· Ø³ÙØ±Ù‡Ø§ÛŒ ÙØ¹Ø§Ù„ Ø¯Ø±Ø§Ù†ØªØ®Ø§Ø¨â€ŒÚ¯Ø± Ø«Ø¨Øªâ€ŒÙ†Ø§Ù… Ù…Ø³Ø§ÙØ± Ø¸Ø§Ù‡Ø± Ø´ÙˆÙ†Ø¯
+            // فقط سفرهای فعال درانتخاب‌گر ثبت‌نام مسافر ظاهر شوند
             if (tripSelect) {
                 const opt = document.createElement('option');
                 opt.value = t.id;
@@ -867,7 +867,7 @@ document.getElementById('t_car_fee').value = 0;
         });
         });
 
-        // Ø±Ø¯ÛŒÙ Ø³ÙØ±Ù‡Ø§ÛŒ Ø¨Ø±Ú¯Ø²Ø§Ø±Ø´Ø¯Ù‡ â€” ÙÙ‚Ø· Ù…Ø´Ø§Ù‡Ø¯Ù‡ Ú¯Ø²Ø§Ø±Ø´ (Ø¨Ø¯ÙˆÙ† ÙˆÛŒØ±Ø§ÛŒØ´/Ø­Ø°Ù/Ø«Ø¨Øªâ€ŒÙ†Ø§Ù…)
+        // ردیف سفرهای برگزارشده — فقط مشاهده گزارش (بدون ویرایش/حذف/ثبت‌نام)
         if (completedTripsTable) {
             completedTrips.forEach((t) => {
                 const filteredParts = allParticipants.filter(p => p.trip_id === t.id);
@@ -876,9 +876,9 @@ document.getElementById('t_car_fee').value = 0;
                         <td><strong>${t.title}</strong></td>
                         <td>${t.destination || '-'}</td>
                         <td>${t.date || '-'}</td>
-                        <td>${filteredParts.length} Ù†ÙØ±</td>
+                        <td>${filteredParts.length} نفر</td>
                         <td>
-                            <button class="btn-action btn-view" onclick="showTripParticipants(${t.id})">ðŸ‘¥ Ú¯Ø²Ø§Ø±Ø´ Ø´Ø±Ú©Øªâ€ŒÚ©Ù†Ù†Ø¯Ú¯Ø§Ù†</button>
+                            <button class="btn-action btn-view" onclick="showTripParticipants(${t.id})">👥 گزارش شرکت‌کنندگان</button>
                         </td>
                     </tr>
                 `;
@@ -908,8 +908,8 @@ document.getElementById('t_car_fee').value = 0;
 
         filtered.forEach(p => {
             const trip = allTrips.find(t => t.id === p.trip_id);
-            const tripTitle = trip ? trip.title : 'Ù†Ø§Ù…Ø´Ø®Øµ';
-            const badgeClass = p.payment_status === 'Ù¾Ø±Ø¯Ø§Ø®Øª Ú©Ø§Ù…Ù„' ? 'badge-full' : 'badge-deposit';
+            const tripTitle = trip ? trip.title : 'نامشخص';
+            const badgeClass = p.payment_status === 'پرداخت کامل' ? 'badge-full' : 'badge-deposit';
 
             table.innerHTML += `
                 <tr>
@@ -918,10 +918,10 @@ document.getElementById('t_car_fee').value = 0;
                     <td>${p.phone_number || '-'}</td>
                     <td>${tripTitle}</td>
                     <td><span class="badge ${badgeClass}">${p.payment_status || '-'}</span></td>
-                    <td>${(p.paid_amount || 0).toLocaleString()} ØªÙˆÙ…Ø§Ù†</td>
+                    <td>${(p.paid_amount || 0).toLocaleString()} تومان</td>
                     <td>
-                        <button class="btn-action btn-edit" onclick="editParticipant(${p.id})">ÙˆÛŒØ±Ø§ÛŒØ´</button>
-                        <button class="btn-action btn-delete" onclick="deleteParticipant(${p.id})">Ø­Ø°Ù</button>
+                        <button class="btn-action btn-edit" onclick="editParticipant(${p.id})">ویرایش</button>
+                        <button class="btn-action btn-delete" onclick="deleteParticipant(${p.id})">حذف</button>
                     </td>
                 </tr>
             `;
@@ -929,7 +929,7 @@ document.getElementById('t_car_fee').value = 0;
     }
 
     // -----------------------------------------------------------------------
-    // Û±Û°. Ø¨Ø±Ø±Ø³ÛŒ Ù¾Ø±Ø¯Ø§Ø®Øªâ€ŒÙ‡Ø§
+    // ۱۰. بررسی پرداخت‌ها
     // -----------------------------------------------------------------------
     let currentPaymentFilter = '';
     let allPayments = [];
@@ -941,18 +941,18 @@ document.getElementById('t_car_fee').value = 0;
 
         if (!isServerOnline) {
             statusEl.className = 'payments-error';
-            statusEl.textContent = 'âŒ Ø¨Ø±Ø§ÛŒ Ù…Ø´Ø§Ù‡Ø¯Ù‡ Ù¾Ø±Ø¯Ø§Ø®Øªâ€ŒÙ‡Ø§ Ø¨Ø§ÛŒØ¯ Ø¨Ù‡ Ø³Ø±ÙˆØ± Ù…ØªØµÙ„ Ø¨Ø§Ø´ÛŒØ¯.';
+            statusEl.textContent = '❌ برای مشاهده پرداخت‌ها باید به سرور متصل باشید.';
             return;
         }
 
         if (!window.isLoggedIn) {
             statusEl.className = 'payments-error';
-            statusEl.textContent = 'Ù„Ø·ÙØ§Ù‹ Ø§Ø¨ØªØ¯Ø§ ÙˆØ§Ø±Ø¯ Ø´ÙˆÛŒØ¯.';
+            statusEl.textContent = 'لطفاً ابتدا وارد شوید.';
             return;
         }
 
         statusEl.className = 'payments-loading';
-        statusEl.textContent = 'Ø¯Ø± Ø­Ø§Ù„ Ø¯Ø±ÛŒØ§ÙØª Ù¾Ø±Ø¯Ø§Ø®Øªâ€ŒÙ‡Ø§...';
+        statusEl.textContent = 'در حال دریافت پرداخت‌ها...';
         table.innerHTML = '';
 
         try {
@@ -965,9 +965,9 @@ document.getElementById('t_car_fee').value = 0;
             allPayments = await res.json();
             renderPayments();
         } catch (err) {
-            console.error('Ø®Ø·Ø§ Ø¯Ø± Ø¯Ø±ÛŒØ§ÙØª Ù¾Ø±Ø¯Ø§Ø®Øªâ€ŒÙ‡Ø§:', err);
+            console.error('خطا در دریافت پرداخت‌ها:', err);
             statusEl.className = 'payments-error';
-            statusEl.textContent = 'âŒ Ø¯Ø±ÛŒØ§ÙØª Ø§Ø·Ù„Ø§Ø¹Ø§Øª Ù¾Ø±Ø¯Ø§Ø®Øªâ€ŒÙ‡Ø§ Ø¨Ø§ Ø®Ø·Ø§ Ù…ÙˆØ§Ø¬Ù‡ Ø´Ø¯.';
+            statusEl.textContent = '❌ دریافت اطلاعات پرداخت‌ها با خطا مواجه شد.';
         }
     }
 
@@ -980,14 +980,14 @@ document.getElementById('t_car_fee').value = 0;
     }
 
     function formatPaymentType(type) {
-        return type === 'full' ? 'ðŸ’µ Ù¾Ø±Ø¯Ø§Ø®Øª Ú©Ø§Ù…Ù„' : 'ðŸ’° Ø¨ÛŒØ¹Ø§Ù†Ù‡';
+        return type === 'full' ? '💵 پرداخت کامل' : '💰 بیعانه';
     }
 
     function formatPaymentStatus(status) {
         const map = {
-            'pending_review': ['â³ Ø¯Ø± Ø§Ù†ØªØ¸Ø§Ø± Ø¨Ø±Ø±Ø³ÛŒ', 'badge-pending'],
-            'confirmed': ['âœ… ØªØ£ÛŒÛŒØ¯ Ø´Ø¯Ù‡', 'badge-confirmed'],
-            'rejected': ['âŒ Ø±Ø¯ Ø´Ø¯Ù‡', 'badge-rejected'],
+            'pending_review': ['⏳ در انتظار بررسی', 'badge-pending'],
+            'confirmed': ['✅ تأیید شده', 'badge-confirmed'],
+            'rejected': ['❌ رد شده', 'badge-rejected'],
 
         };
         const [text, cls] = map[status] || [status, ''];
@@ -995,7 +995,7 @@ document.getElementById('t_car_fee').value = 0;
     }
 
     function getReceiptUrl(payment) {
-        // Ø§Ø³ØªØ®Ø±Ø§Ø¬ filename Ø§Ø² receipt_local_path (Ù…Ø«Ù„ receipts/receipt_abc.jpg)
+        // استخراج filename از receipt_local_path (مثل receipts/receipt_abc.jpg)
         if (!payment.receipt_local_path) return null;
         const parts = payment.receipt_local_path.split(/[\\/]/);
         const filename = parts[parts.length - 1];
@@ -1012,7 +1012,7 @@ document.getElementById('t_car_fee').value = 0;
 
         if (allPayments.length === 0) {
             statusEl.className = 'payments-empty';
-            statusEl.textContent = 'Ù‡ÛŒÚ† Ù¾Ø±Ø¯Ø§Ø®ØªÛŒ Ø¨Ø±Ø§ÛŒ Ù†Ù…Ø§ÛŒØ´ ÙˆØ¬ÙˆØ¯ Ù†Ø¯Ø§Ø±Ø¯.';
+            statusEl.textContent = 'هیچ پرداختی برای نمایش وجود ندارد.';
             return;
         }
 
@@ -1020,18 +1020,18 @@ document.getElementById('t_car_fee').value = 0;
         statusEl.textContent = '';
 
         allPayments.forEach(p => {
-            const participantName = p.participant ? (p.participant.full_name || 'Ù†Ø§Ù…Ø´Ø®Øµ') : 'Ù†Ø§Ù…Ø´Ø®Øµ';
-            const tripTitle = p.trip ? (p.trip.title || 'Ù†Ø§Ù…Ø´Ø®Øµ') : 'Ù†Ø§Ù…Ø´Ø®Øµ';
+            const participantName = p.participant ? (p.participant.full_name || 'نامشخص') : 'نامشخص';
+            const tripTitle = p.trip ? (p.trip.title || 'نامشخص') : 'نامشخص';
             const receiptUrl = getReceiptUrl(p);
             const canReview = p.status === 'pending_review';
 
             const receiptCell = receiptUrl
-                ? `<img class="receipt-thumb" src="${receiptUrl}" alt="ÙÛŒØ´" title="Ù…Ø´Ø§Ù‡Ø¯Ù‡ ÙÛŒØ´" onclick="openReceiptModal('${receiptUrl}')" onerror="this.onerror=null; this.src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg'">`
+                ? `<img class="receipt-thumb" src="${receiptUrl}" alt="فیش" title="مشاهده فیش" onclick="openReceiptModal('${receiptUrl}')" onerror="this.onerror=null; this.src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg'">`
                 : '<span style="color:#9ca3af;">-</span>';
 
             const actionsCell = canReview
-                ? `<button class="btn-action btn-confirm" onclick="confirmPayment(${p.id})">âœ… ØªØ£ÛŒÛŒØ¯</button>
-                   <button class="btn-action btn-reject" onclick="rejectPayment(${p.id})">âŒ Ø±Ø¯</button>`
+                ? `<button class="btn-action btn-confirm" onclick="confirmPayment(${p.id})">✅ تأیید</button>
+                   <button class="btn-action btn-reject" onclick="rejectPayment(${p.id})">❌ رد</button>`
                 : '<span style="color:#9ca3af;">-</span>';
 
             table.innerHTML += `
@@ -1040,7 +1040,7 @@ document.getElementById('t_car_fee').value = 0;
                     <td><strong>${participantName}</strong></td>
                     <td>${tripTitle}</td>
                     <td>${formatPaymentType(p.payment_type)}</td>
-                    <td>${(p.expected_amount || 0).toLocaleString()} ØªÙˆÙ…Ø§Ù†</td>
+                    <td>${(p.expected_amount || 0).toLocaleString()} تومان</td>
                     <td>${formatPaymentStatus(p.status)}</td>
                     <td>${p.created_at ? p.created_at.replace('T', ' ').slice(0, 19) : '-'}</td>
                     <td>${p.reviewed_at ? p.reviewed_at.replace('T', ' ').slice(0, 19) : '-'}</td>
@@ -1052,34 +1052,34 @@ document.getElementById('t_car_fee').value = 0;
     }
 
     async function confirmPayment(id) {
-        if (!confirm('Ø¢ÛŒØ§ Ø§Ø² ØªØ£ÛŒÛŒØ¯ Ø§ÛŒÙ† Ù¾Ø±Ø¯Ø§Ø®Øª Ù…Ø·Ù…Ø¦Ù† Ù‡Ø³ØªÛŒØ¯ØŸ')) return;
+        if (!confirm('آیا از تأیید این پرداخت مطمئن هستید؟')) return;
         try {
             const res = await fetch(`/payments/${id}/confirm`, { method: 'POST', credentials: 'include' });
             if (res.ok) {
-                alert('âœ… Ù¾Ø±Ø¯Ø§Ø®Øª Ø¨Ø§ Ù…ÙˆÙÙ‚ÛŒØª ØªØ£ÛŒÛŒØ¯ Ø´Ø¯.');
+                alert('✅ پرداخت با موفقیت تأیید شد.');
                 loadPayments();
             } else {
                 const errData = await res.json();
-                alert('âŒ Ø®Ø·Ø§ Ø¯Ø± ØªØ£ÛŒÛŒØ¯ Ù¾Ø±Ø¯Ø§Ø®Øª: ' + (errData.detail || 'Ø®Ø·Ø§ÛŒ Ù†Ø§Ø´Ù†Ø§Ø®ØªÙ‡'));
+                alert('❌ خطا در تأیید پرداخت: ' + (errData.detail || 'خطای ناشناخته'));
             }
         } catch (err) {
-            alert('âŒ Ø®Ø·Ø§ Ø¯Ø± Ø§Ø±ØªØ¨Ø§Ø· Ø¨Ø§ Ø³Ø±ÙˆØ±.');
+            alert('❌ خطا در ارتباط با سرور.');
         }
     }
 
     async function rejectPayment(id) {
-        if (!confirm('Ø¢ÛŒØ§ Ø§Ø² Ø±Ø¯ Ú©Ø±Ø¯Ù† Ø§ÛŒÙ† ÙÛŒØ´ Ù…Ø·Ù…Ø¦Ù† Ù‡Ø³ØªÛŒØ¯ØŸ')) return;
+        if (!confirm('آیا از رد کردن این فیش مطمئن هستید؟')) return;
         try {
             const res = await fetch(`/payments/${id}/reject`, { method: 'POST', credentials: 'include' });
             if (res.ok) {
-                alert('âŒ Ù¾Ø±Ø¯Ø§Ø®Øª Ø±Ø¯ Ø´Ø¯.');
+                alert('❌ پرداخت رد شد.');
                 loadPayments();
             } else {
                 const errData = await res.json();
-                alert('âŒ Ø®Ø·Ø§ Ø¯Ø± Ø±Ø¯ Ù¾Ø±Ø¯Ø§Ø®Øª: ' + (errData.detail || 'Ø®Ø·Ø§ÛŒ Ù†Ø§Ø´Ù†Ø§Ø®ØªÙ‡'));
+                alert('❌ خطا در رد پرداخت: ' + (errData.detail || 'خطای ناشناخته'));
             }
         } catch (err) {
-            alert('âŒ Ø®Ø·Ø§ Ø¯Ø± Ø§Ø±ØªØ¨Ø§Ø· Ø¨Ø§ Ø³Ø±ÙˆØ±.');
+            alert('❌ خطا در ارتباط با سرور.');
         }
     }
 
@@ -1089,13 +1089,13 @@ document.getElementById('t_car_fee').value = 0;
         if (!modal || !img) return;
         img.src = src;
 <div class=\"form-group\">
-    <label for=\"t_has_car_option\">Ù‚Ø§Ø¨Ù„ÛŒØª Ø®ÙˆØ¯Ø±ÙˆÛŒ Ø´Ø®ØµÛŒ/Ú¯Ø±ÙˆÙ‡ÛŒ</label>
+    <label for=\"t_has_car_option\">قابلیت خودروی شخصی/گروهی</label>
     <div class=\"form-check\">
         <input class=\"form-check-input\" type=\"checkbox\" id=\"t_has_car_option\">
     </div>
 </div>
 <div class=\"form-group\">
-    <label for=\"t_car_fee\">Ù…Ø¨Ù„Øº Ú©Ø±Ø§ÛŒÙ‡ Ù…Ø§Ø´ÛŒÙ† (ØªÙˆÙ…Ø§Ù†)</label>
+    <label for=\"t_car_fee\">مبلغ کرایه ماشین (تومان)</label>
     <input type=\"number\" class=\"form-control\" id=\"t_car_fee\" placeholder=\"0\">
 </div>
 test
@@ -1108,7 +1108,7 @@ test
     }
 
     // -----------------------------------------------------------------------
-    // Û±Û±. Ù†Ù…Ø§ÛŒØ´ Ø´Ø±Ú©Øªâ€ŒÚ©Ù†Ù†Ø¯Ú¯Ø§Ù† ÛŒÚ© ØªÙˆØ± Ø®Ø§Øµ
+    // ۱۱. نمایش شرکت‌کنندگان یک تور خاص
     // -----------------------------------------------------------------------
     async function showTripParticipants(tripId) {
         const modal = document.getElementById('tripParticipantsModal');
@@ -1119,13 +1119,13 @@ test
 
         const trip = allTrips.find(t => t.id === tripId);
         if (trip) {
-            titleEl.textContent = `Ø´Ø±Ú©Øªâ€ŒÚ©Ù†Ù†Ø¯Ú¯Ø§Ù†: ${trip.title}`;
+            titleEl.textContent = `شرکت‌کنندگان: ${trip.title}`;
         }
 
         modal.classList.add('show');
         table.innerHTML = '';
         statusEl.className = 'payments-loading';
-        statusEl.textContent = 'Ø¯Ø± Ø­Ø§Ù„ Ø¯Ø±ÛŒØ§ÙØª Ø´Ø±Ú©Øªâ€ŒÚ©Ù†Ù†Ø¯Ú¯Ø§Ù†...';
+        statusEl.textContent = 'در حال دریافت شرکت‌کنندگان...';
 
         try {
             const res = await fetch(`/trips/${tripId}/participants`, { cache: 'no-store', credentials: 'include' });
@@ -1135,7 +1135,7 @@ test
 
             if (participants.length === 0) {
                 statusEl.className = 'payments-empty';
-                statusEl.textContent = 'Ù‡ÛŒÚ† Ø´Ø±Ú©Øªâ€ŒÚ©Ù†Ù†Ø¯Ù‡â€ŒØ§ÛŒ Ø¨Ø±Ø§ÛŒ Ø§ÛŒÙ† ØªÙˆØ± Ø«Ø¨Øª Ù†Ø´Ø¯Ù‡ Ø§Ø³Øª.';
+                statusEl.textContent = 'هیچ شرکت‌کننده‌ای برای این تور ثبت نشده است.';
                 return;
             }
 
@@ -1143,14 +1143,14 @@ test
             statusEl.textContent = '';
 
             participants.forEach((p, index) => {
-                // ÙˆØ¶Ø¹ÛŒØª ÙˆØ§Ù‚Ø¹ÛŒ Ù¾Ø±Ø¯Ø§Ø®Øª
+                // وضعیت واقعی پرداخت
                 let badgeClass = 'badge-deposit';
-                if (p.payment_status === 'Ù¾Ø±Ø¯Ø§Ø®Øª Ú©Ø§Ù…Ù„ ØªØ§ÛŒÛŒØ¯ Ø´Ø¯Ù‡') badgeClass = 'badge-full';
-                else if (p.payment_status === 'ÙÛŒØ´ Ø¯Ø± Ø§Ù†ØªØ¸Ø§Ø± Ø¨Ø±Ø±Ø³ÛŒ') badgeClass = 'badge-pending';
-                else if (p.payment_status === 'Ø¨ÛŒØ¹Ø§Ù†Ù‡ ØªØ§ÛŒÛŒØ¯ Ø´Ø¯Ù‡') badgeClass = 'badge-deposit';
-                else if (p.payment_status === 'Ù¾Ø±Ø¯Ø§Ø®Øª Ù†Ø´Ø¯Ù‡') badgeClass = 'badge-deposit';
+                if (p.payment_status === 'پرداخت کامل تایید شده') badgeClass = 'badge-full';
+                else if (p.payment_status === 'فیش در انتظار بررسی') badgeClass = 'badge-pending';
+                else if (p.payment_status === 'بیعانه تایید شده') badgeClass = 'badge-deposit';
+                else if (p.payment_status === 'پرداخت نشده') badgeClass = 'badge-deposit';
 
-const transportDisplay = p.transport_type === 'personal_car' ? 'ðŸš— Ù…Ø§Ø´ÛŒÙ† Ø´Ø®ØµÛŒ' : p.transport_type === 'group_car' ? 'ðŸš™ Ù…Ø§Ø´ÛŒÙ† Ø³Ø§ÛŒØ±ÛŒÙ†' : '-';
+const transportDisplay = p.transport_type === 'personal_car' ? '🚗 ماشین شخصی' : p.transport_type === 'group_car' ? '🚙 ماشین سایرین' : '-';
                 table.innerHTML += `
                     <tr>
                         <td>${index + 1}</td>
@@ -1159,15 +1159,15 @@ const transportDisplay = p.transport_type === 'personal_car' ? 'ðŸš— Ù…�
                         <td>${p.phone_number || '-'}</td>
 <td>${transportDisplay}</td>\n
                         <td><span class="badge ${badgeClass}">${p.payment_status}</span></td>
-                        <td>${(p.confirmed_amount || 0).toLocaleString()} ØªÙˆÙ…Ø§Ù†</td>
-                        <td>${(p.remaining_amount || 0).toLocaleString()} ØªÙˆÙ…Ø§Ù†</td>
+                        <td>${(p.confirmed_amount || 0).toLocaleString()} تومان</td>
+                        <td>${(p.remaining_amount || 0).toLocaleString()} تومان</td>
                     </tr>
                 `;
             });
         } catch (err) {
-            console.error('Ø®Ø·Ø§ Ø¯Ø± Ø¯Ø±ÛŒØ§ÙØª Ø´Ø±Ú©Øªâ€ŒÚ©Ù†Ù†Ø¯Ú¯Ø§Ù†:', err);
+            console.error('خطا در دریافت شرکت‌کنندگان:', err);
             statusEl.className = 'payments-error';
-            statusEl.textContent = 'âŒ Ø¯Ø±ÛŒØ§ÙØª Ø§Ø·Ù„Ø§Ø¹Ø§Øª Ø´Ø±Ú©Øªâ€ŒÚ©Ù†Ù†Ø¯Ú¯Ø§Ù† Ø¨Ø§ Ø®Ø·Ø§ Ù…ÙˆØ§Ø¬Ù‡ Ø´Ø¯.';
+            statusEl.textContent = '❌ دریافت اطلاعات شرکت‌کنندگان با خطا مواجه شد.';
         }
     }
 
@@ -1176,12 +1176,12 @@ const transportDisplay = p.transport_type === 'personal_car' ? 'ðŸš— Ù…�
         if (modal) modal.classList.remove('show');
     }
 
-    // Ø«Ø¨Øª Service Worker Ø¨Ø±Ø§ÛŒ PWA
+    // ثبت Service Worker برای PWA
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
             navigator.serviceWorker.register('/sw.js')
-                .then(reg => console.log('Service Worker ÙØ¹Ø§Ù„ Ø´Ø¯:', reg.scope))
-                .catch(err => console.log('Ø®Ø·Ø§ Ø¯Ø± Service Worker:', err));
+                .then(reg => console.log('Service Worker فعال شد:', reg.scope))
+                .catch(err => console.log('خطا در Service Worker:', err));
         });
     }
 </script>
