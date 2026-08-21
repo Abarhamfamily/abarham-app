@@ -40,6 +40,8 @@ TRIP_SELECT, NAME, NATIONAL_ID, PHONE = range(4)
 
 PAY_TRIP_SELECT, PAY_TYPE_SELECT, PAY_RECEIPT = range(4, 7)
 
+VEHICLE_CHOICE, AVAILABLE_SEATS = range(7, 9)
+
 
 # ---------------------------------------------------------------------------
 # اطلاعات حساب/کارت مقصد
@@ -209,6 +211,31 @@ async def get_phone_and_save(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     context.user_data["phone_number"] = phone_number
 
+    # ---------------------------------------------------------
+    # پرسش انتخاب وسیله نقلیه برای تورهای شخصی
+    # ---------------------------------------------------------
+    trip_id = context.user_data.get("trip_id")
+    
+    with Session(engine) as session:
+        trip = session.get(Trip, trip_id)
+        
+        if trip and trip.transportation_type == "personal_vehicle":
+            reply_markup = ReplyKeyboardMarkup(
+                [
+                    ["🚗 ماشین شخصی خودم"],
+                    ["🚙 ماشین یکی از اعضای ابرهام"]
+                ],
+                one_time_keyboard=True,
+                resize_keyboard=True
+            )
+            
+            await update.message.reply_text(
+                "لطفاً گزینه وسیله نقلیه خود را انتخاب کنید:",
+                reply_markup=reply_markup
+            )
+            
+            return VEHICLE_CHOICE
+
     trip_id = context.user_data.get("trip_id")
 
     try:
@@ -251,6 +278,47 @@ async def get_phone_and_save(update: Update, context: ContextTypes.DEFAULT_TYPE)
                     return ConversationHandler.END
 
             # -----------------------------------------------------
+            # بررسی ظرفیت برای تورهای شخصی (personal_vehicle)
+            # -----------------------------------------------------
+            if trip.transportation_type == "personal_vehicle":
+                # تعداد صاحبان خودرو (vehicle_choice == 'own')
+                car_owners = session.exec(
+                    select(Participant).where(
+                        Participant.trip_id == trip_id,
+                        Participant.vehicle_choice == "own"
+                    )
+                ).all()
+                car_owners_count = len(car_owners)
+
+                # تعداد مسافرانی که با ماشین دیگران می‌آیند (vehicle_choice == 'other')
+                passengers_count = len(
+                    session.exec(
+                        select(Participant).where(
+                            Participant.trip_id == trip_id,
+                            Participant.vehicle_choice == "other"
+                        )
+                    ).all()
+                )
+
+                # محاسبه صندلی‌های در دسترس از تمام مالکان خودرو
+                total_available_seats = sum(owner.available_seats for owner in car_owners)
+
+                if passengers_count >= total_available_seats:
+                    await update.message.reply_text(
+                        "❌ ظرفیت مسافر برای تورهای شخصی تکمیل شده است. "
+                        "لطفاً گزینه 'ماشین شخصی خودم' را انتخاب کنید یا منتظر بمانید.",
+                        reply_markup=ReplyKeyboardMarkup(
+                            [
+                                ["🚗 ماشین شخصی خودم"],
+                                ["🚙 ماشین یکی از اعضای ابرهام"]
+                            ],
+                            one_time_keyboard=True,
+                            resize_keyboard=True
+                        )
+                    )
+                    return VEHICLE_CHOICE
+
+            # -----------------------------------------------------
             # جلوگیری از ثبت‌نام تکراری
             # -----------------------------------------------------
             existing = session.exec(
@@ -275,7 +343,9 @@ async def get_phone_and_save(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 national_id=context.user_data["national_id"],
                 phone_number=context.user_data["phone_number"],
                 trip_id=trip_id,
-                telegram_user_id=update.effective_user.id
+                telegram_user_id=update.effective_user.id,
+                vehicle_choice=context.user_data.get("vehicle_choice"),
+                available_seats=context.user_data.get("available_seats", 0)
             )
 
             session.add(new_participant)
@@ -351,6 +421,77 @@ async def get_phone_and_save(update: Update, context: ContextTypes.DEFAULT_TYPE)
         )
 
         return ConversationHandler.END
+
+# دریافت انتخاب وسیله نقلیه و ذخیره تعداد صندلی‌های در دسترس
+# ===========================================================================
+
+async def get_vehicle_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """پرسش انتخاب وسیله نقلیه و در صورت انتخاب 'own'، پرسش تعداد صندلی‌های در دسترس"""
+    user_choice = update.message.text
+    
+    # اگر کاربر گزینه 'other' را انتخاب کرد
+    if user_choice == "🚙 ماشین یکی از اعضای ابرهام":
+        context.user_data["vehicle_choice"] = "other"
+        context.user_data["available_seats"] = 0  # برای 'other'، صندلی 0
+        
+        # ادامه به مرحله ذخیره شرکت‌کننده
+        return await get_phone_and_save(update, context)
+    
+    # اگر کاربر گزینه 'own' را انتخاب کرد
+    elif user_choice == "🚗 ماشین شخصی خودم":
+        context.user_data["vehicle_choice"] = "own"
+        
+        # پرسش تعداد صندلی‌های در دسترس
+        reply_markup = ReplyKeyboardMarkup(
+            [["0"], ["1"], ["2"], ["3"]],
+            one_time_keyboard=True,
+            resize_keyboard=True
+        )
+        
+        await update.message.reply_text(
+            "لطفاً تعداد صندلی‌های خالی در خودروی خود را برای مسافران انتخاب کنید (۰ تا ۳):\n\n"
+            "به ازای هر مسافری که در خودروی شما قرار گیرد، مبلغ کرایه تعیین‌شده به شما پرداخت خواهد شد.",
+            reply_markup=reply_markup
+        )
+        
+        return AVAILABLE_SEATS
+    
+    # اگر گزینه نامعتبری انتخاب شد
+    else:
+        await update.message.reply_text(
+            "لطفاً یکی از گزینه‌های کیبورد را انتخاب کنید:",
+            reply_markup=ReplyKeyboardMarkup(
+                [
+                    ["🚗 ماشین شخصی خودم"],
+                    ["🚙 ماشین یکی از اعضای ابرهام"]
+                ],
+                one_time_keyboard=True,
+                resize_keyboard=True
+            )
+        )
+        return VEHICLE_CHOICE
+
+async def get_available_seats(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """دریافت تعداد صندلی‌های در دسترس از کاربر و ذخیره آن"""
+    try:
+        seats = int(update.message.text.strip())
+        if seats < 0 or seats > 3:
+            raise ValueError
+    except ValueError:
+        await update.message.reply_text(
+            "لطفاً یک عدد بین ۰ تا ۳ وارد کنید:",
+            reply_markup=ReplyKeyboardMarkup(
+                [["0"], ["1"], ["2"], ["3"]],
+                one_time_keyboard=True,
+                resize_keyboard=True
+            )
+        )
+        return AVAILABLE_SEATS
+    
+    context.user_data["available_seats"] = seats
+    
+    # ادامه به مرحله ذخیره شرکت‌کننده
+    return await get_phone_and_save(update, context)
 
 # ===========================================================================
 # پرداخت تور برای کاربران ثبت‌نام‌شده قبلی

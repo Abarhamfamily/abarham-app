@@ -195,8 +195,13 @@ def get_trip_participants(trip_id: int):
                 trip_id,
                 session,
             )
+            # Compute effective price based on transportation type and vehicle choice
+            if trip.transportation_type == "personal_vehicle" and participant.vehicle_choice == "other":
+                effective_price = trip.price + trip.vehicle_fare
+            else:
+                effective_price = trip.price
             remaining_amount = max(
-                round(trip.price - confirmed_total, 2),
+                round(effective_price - confirmed_total, 2),
                 0.0,
             )
             has_pending_flag = has_pending(
@@ -207,7 +212,7 @@ def get_trip_participants(trip_id: int):
             fully_paid = is_fully_paid(
                 participant.id,
                 trip_id,
-                trip.price,
+                effective_price,
                 session,
             )
 

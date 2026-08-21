@@ -73,11 +73,19 @@ async def send_group_link_reminders(bot):
             ).all()
 
             for participant in participants:
+                # محاسبه قیمت efektive بر اساس نوع وسایل نقلیه و انتخاب کاربر
+                effective_price = trip.price
+                if (
+                    trip.transportation_type == "personal_vehicle"
+                    and participant.vehicle_choice == "other"
+                ):
+                    effective_price = trip.price + trip.vehicle_fare
+                
                 # فقط مسافرانی که پرداخت کامل تأییدشده دارند
                 if not is_fully_paid(
                     participant.id,
                     trip.id,
-                    trip.price,
+                    effective_price,
                     session,
                 ):
                     continue

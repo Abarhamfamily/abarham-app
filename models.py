@@ -18,6 +18,8 @@ class Trip(SQLModel, table=True):
     capacity: int = 0                   # ظرفیت تور (۰ یعنی نامحدود)
     telegram_group_link: Optional[str] = None   # لینک گروه هماهنگی تلگرام سفر
     status: str = "active"              # "active" | "completed"
+    transportation_type: str = "group_vehicle"  # "group_vehicle" | "personal_vehicle"
+    vehicle_fare: float = 0.0           # مبلغ اضافی برای وسیله نقلیه شخصی در صورت انتخاب "other"
 
 
 # ---------------------------------------------------------------------------
@@ -32,6 +34,8 @@ class Participant(SQLModel, table=True):
     telegram_user_id: Optional[int] = None   # شناسه کاربر تلگرام (برای پرداخت)
     payment_status: str = "پرداخت بیعانه"   # یا "پرداخت کامل"
     paid_amount: float = 0.0
+    vehicle_choice: Optional[str] = None   # "own" یا "other" برای سفرهای شخصی؛ NULL برای گروه‌های گروهی یا نترجمه‌شده
+    available_seats: int = 0   # تعداد صندلی‌های در دسترس ارائه شده توسط راننده (برای vehicle_choice == "own")
 
 
 # ---------------------------------------------------------------------------
