@@ -33,7 +33,10 @@ reminder_task = None
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # اجرای migrationهای دیتابیس
-    run_migrations()
+    try:
+         run_migrations()
+     except Exception as e:
+         logger.error(f\"⚠️ خطا در اجرای migrationها: {e}\")
 
     # ساخت جدول‌های جدید در صورت نیاز
     create_db_and_tables()
