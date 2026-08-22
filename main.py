@@ -1,80 +1,105 @@
 import os
-import logging
-import asyncio
-from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import List, Optional
+from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException
-from migration import run_migrations
-from fastapi.responses import HTMLResponse, FileResponse, Response
-from sqlmodel import Session, select
+import bcrypt
+from fastapi import FastAPI, Depends, HTTPException, Request, Form
+from fastapi.responses import JSONResponse, HTMLResponse, FileResponse, Response
+from starlette.middleware.sessions import SessionMiddleware
+from sqlmodel import Session, select, delete
 
-from models import engine, create_db_and_tables, Trip, Participant, Payment
-from payment import (
-    transition_status,
-    get_receipt_path,
-    get_confirmed_total,
-    is_fully_paid,
-    has_pending,
-)
-from bot import start_bot
-from reminders import run_reminder_loop, mark_completed_trips
-from telegram import InlineKeyboardMarkup, InlineKeyboardButton
-
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("abarham")
-
-# نگه‌داری رفرنس به اپ تلگرام و تسک یادآوری برای shutdown تمیز
-telegram_app = None
-reminder_task = None
+# Import local models and helpers
+from database import engine, run_migrations
+from models import Trip, Participant, Payment
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # اجرای migrationهای دیتابیس
     try:
-         run_migrations()
-     except Exception as e:
-         logger.error(f\"⚠️ خطا در اجرای migrationها: {e}\")
-
-    # ساخت جدول‌های جدید در صورت نیاز
-    create_db_and_tables()
-
-    # اجرای ربات تلگرام در پس‌زمینه
-    global telegram_app
-
-    try:
-        telegram_app = await start_bot()
-        logger.info("🤖 وب‌سرور و ربات تلگرام فعال شدند.")
-        # شروع Scheduler یادآوری
-        global reminder_task
-        reminder_task = asyncio.create_task(
-            run_reminder_loop(telegram_app.bot)
-        )
-        logger.info("🔄 Scheduler یادآوری فعال شد.")
+        run_migrations()
     except Exception as e:
-        telegram_app = None
-        logger.error(f"⚠️ اجرای ربات تلگرام با خطا مواجه شد: {e}")
-
+        print(f"Migration error on startup: {e}")
     yield
-
-    # خاموش کردن Scheduler یادآوری
-    if reminder_task is not None:
-        reminder_task.cancel()
-        logger.info("🔄 Scheduler یادآوری متوقف شد.")
-
-    # خاموش کردن تمیز ربات
-    if telegram_app is not None:
-        try:
-            await telegram_app.updater.stop()
-            await telegram_app.stop()
-            await telegram_app.shutdown()
-        except Exception as e:
-            logger.error(f"⚠️ خطا هنگام خاموش کردن ربات: {e}")
 
 
 app = FastAPI(lifespan=lifespan)
+
+SESSION_SECRET = os.getenv("SESSION_SECRET", "super-secret-key-change-in-prod")
+
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=SESSION_SECRET,
+    https_only=True,
+    same_site="lax",
+    max_age=86400
+)
+
+# Admin Authentication Configuration
+ADMIN_USERNAME = os.getenv("ADMIN_USERNAME")
+ADMIN_PASSWORD_HASH = os.getenv("ADMIN_PASSWORD")
+
+if not ADMIN_USERNAME or not ADMIN_PASSWORD_HASH:
+    raise RuntimeError("ADMIN_USERNAME and ADMIN_PASSWORD environment variables are required but not set")
+
+
+def hash_password(password: str) -> str:
+    """Hash a password using bcrypt."""
+    password_bytes = password.encode('utf-8')
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(password_bytes, salt)
+    return hashed.decode('utf-8')
+
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Verify a password against the hashed version."""
+    plain_bytes = plain_password.encode('utf-8')
+    hashed_bytes = hashed_password.strip().encode('utf-8')
+    return bcrypt.checkpw(plain_bytes, hashed_bytes)
+
+
+def verify_admin_session(request: Request):
+    """Verify admin session authentication."""
+    if not request.session.get("admin_authenticated"):
+        raise HTTPException(
+            status_code=401,
+            detail="Admin authentication required"
+        )
+    return True
+
+
+# ---------------------------------------------------------------------------
+# احراز هویت (Login / Logout)
+# ---------------------------------------------------------------------------
+@app.post("/login")
+async def login(request: Request, username: str = Form(...), password: str = Form(...)):
+    """Admin login endpoint."""
+    if username != ADMIN_USERNAME or not verify_password(password, ADMIN_PASSWORD_HASH):
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid credentials"
+        )
+    
+    request.session["admin_authenticated"] = True
+    return JSONResponse({"success": True})
+
+
+@app.post("/logout")
+async def logout(request: Request):
+    """Admin logout endpoint."""
+    request.session.pop("admin_authenticated", None)
+    return JSONResponse({"success": True})
+
+
+# Include Routers
+from participants.router import router as participants_router
+from trip_info.router import router as trip_info_router
+from wallet.router import router as wallet_router
+
+app.include_router(trip_info_router)
+app.include_router(wallet_router)
+app.include_router(participants_router)
+
 
 # ---------------------------------------------------------------------------
 # فایل‌های استاتیک / PWA
@@ -108,25 +133,24 @@ def get_logo():
 def read_root():
     if os.path.exists("index.html"):
         return FileResponse("index.html")
-    return "<h1>فایل index.html یافت نشد!</h1>"
+    return HTMLResponse("<h1>فایل index.html یافت نشد!</h1>")
 
 
 # ---------------------------------------------------------------------------
 # CRUD تورها
 # ---------------------------------------------------------------------------
-@app.get("/trips", response_model=List[Trip])
-@app.get("/trips/", response_model=List[Trip])
+@app.get("/trips", response_model=List[Trip], dependencies=[Depends(verify_admin_session)])
+@app.get("/trips/", response_model=List[Trip], dependencies=[Depends(verify_admin_session)])
 def get_trips():
-    # علامت‌گذاری خودکار سفرهای تاریخ‌گذشته (مقاوم در برابر عدم اجرای Scheduler)
     mark_completed_trips()
     with Session(engine) as session:
         return session.exec(select(Trip)).all()
 
 
-@app.post("/trips", response_model=Trip)
-@app.post("/trips/", response_model=Trip)
-def create_trip(trip: Trip):
-    trip.id = None  # جلوگیری از تزریق id توسط کلاینت
+@app.post("/trips", response_model=Trip, dependencies=[Depends(verify_admin_session)])
+@app.post("/trips/", response_model=Trip, dependencies=[Depends(verify_admin_session)])
+def create_trip(trip: Trip, _: bool = Depends(verify_admin_api_key)):
+    trip.id = None
     with Session(engine) as session:
         session.add(trip)
         session.commit()
@@ -134,8 +158,8 @@ def create_trip(trip: Trip):
         return trip
 
 
-@app.put("/trips/{trip_id}", response_model=Trip)
-def update_trip(trip_id: int, trip: Trip):
+@app.put("/trips/{trip_id}", response_model=Trip, dependencies=[Depends(verify_admin_session)])
+def update_trip(trip_id: int, trip: Trip, _: bool = Depends(verify_admin_api_key)):
     with Session(engine) as session:
         db_trip = session.get(Trip, trip_id)
         if not db_trip:
@@ -149,14 +173,13 @@ def update_trip(trip_id: int, trip: Trip):
         return db_trip
 
 
-@app.delete("/trips/{trip_id}")
-def delete_trip(trip_id: int):
+@app.delete("/trips/{trip_id}", dependencies=[Depends(verify_admin_session)])
+def delete_trip(trip_id: int, _: bool = Depends(verify_admin_api_key)):
     with Session(engine) as session:
         db_trip = session.get(Trip, trip_id)
         if not db_trip:
             raise HTTPException(404, "تور یافت نشد")
 
-        # حذف آبشاری مسافران مرتبط با این تور
         participants = session.exec(
             select(Participant).where(Participant.trip_id == trip_id)
         ).all()
@@ -171,16 +194,15 @@ def delete_trip(trip_id: int):
 # ---------------------------------------------------------------------------
 # CRUD مسافران
 # ---------------------------------------------------------------------------
-@app.get("/participants", response_model=List[Participant])
-@app.get("/participants/", response_model=List[Participant])
+@app.get("/participants", response_model=List[Participant], dependencies=[Depends(verify_admin_session)])
+@app.get("/participants/", response_model=List[Participant], dependencies=[Depends(verify_admin_session)])
 def get_participants():
     with Session(engine) as session:
         return session.exec(select(Participant)).all()
 
 
-@app.get("/trips/{trip_id}/participants")
+@app.get("/trips/{trip_id}/participants", dependencies=[Depends(verify_admin_session)])
 def get_trip_participants(trip_id: int):
-    """دریافت شرکت‌کنندگان یک تور + اطلاعات واقعی پرداخت از جدول Payment."""
     with Session(engine) as session:
         trip = session.get(Trip, trip_id)
         if not trip:
@@ -192,19 +214,13 @@ def get_trip_participants(trip_id: int):
 
         result = []
         for participant in participants:
-            # مبلغ واقعی تأییدشده از جدول Payment
             confirmed_total = get_confirmed_total(
                 participant.id,
                 trip_id,
                 session,
             )
-            # Compute effective price based on transportation type and vehicle choice
-            if trip.transportation_type == "personal_vehicle" and participant.vehicle_choice == "other":
-                effective_price = trip.price + trip.vehicle_fare
-            else:
-                effective_price = trip.price
             remaining_amount = max(
-                round(effective_price - confirmed_total, 2),
+                round(trip.price - confirmed_total, 2),
                 0.0,
             )
             has_pending_flag = has_pending(
@@ -215,11 +231,10 @@ def get_trip_participants(trip_id: int):
             fully_paid = is_fully_paid(
                 participant.id,
                 trip_id,
-                effective_price,
+                trip.price,
                 session,
             )
 
-            # وضعیت واقعی پرداخت
             if has_pending_flag:
                 status_text = "فیش در انتظار بررسی"
             elif fully_paid:
@@ -244,9 +259,36 @@ def get_trip_participants(trip_id: int):
         return result
 
 
-@app.post("/participants", response_model=Participant)
-@app.post("/participants/", response_model=Participant)
-def create_participant(participant: Participant):
+@app.get("/trips/{trip_id}/total_received", dependencies=[Depends(verify_admin_session)])
+def get_trip_total_received(trip_id: int):
+    with Session(engine) as session:
+        trip = session.get(Trip, trip_id)
+        if not trip:
+            raise HTTPException(404, "تور یافت نشد")
+
+        participants = session.exec(
+            select(Participant).where(Participant.trip_id == trip_id)
+        ).all()
+
+        total_received = 0.0
+        for participant in participants:
+            confirmed_total = get_confirmed_total(
+                participant.id,
+                trip_id,
+                session,
+            )
+            total_received += confirmed_total
+
+        return {
+            "trip_id": trip_id,
+            "total_received": round(total_received, 2),
+            "currency": "تومان"
+        }
+
+
+@app.post("/participants", response_model=Participant, dependencies=[Depends(verify_admin_session)])
+@app.post("/participants/", response_model=Participant, dependencies=[Depends(verify_admin_session)])
+def create_participant(participant: Participant, _: bool = Depends(verify_admin_api_key)):
     participant.id = None
     with Session(engine) as session:
         trip = session.get(Trip, participant.trip_id)
@@ -268,8 +310,8 @@ def create_participant(participant: Participant):
         return participant
 
 
-@app.put("/participants/{participant_id}", response_model=Participant)
-def update_participant(participant_id: int, participant: Participant):
+@app.put("/participants/{participant_id}", response_model=Participant, dependencies=[Depends(verify_admin_session)])
+def update_participant(participant_id: int, participant: Participant, _: bool = Depends(verify_admin_api_key)):
     with Session(engine) as session:
         db_participant = session.get(Participant, participant_id)
         if not db_participant:
@@ -283,14 +325,20 @@ def update_participant(participant_id: int, participant: Participant):
         return db_participant
 
 
-@app.delete("/participants/{participant_id}")
-def delete_participant(participant_id: int):
+@app.delete("/participants/{participant_id}", dependencies=[Depends(verify_admin_session)])
+def delete_participant(participant_id: int, _: bool = Depends(verify_admin_api_key)):
     with Session(engine) as session:
         db_participant = session.get(Participant, participant_id)
         if not db_participant:
             raise HTTPException(404, "مسافر یافت نشد")
+
+        session.exec(
+            delete(Payment).where(Payment.participant_id == participant_id)
+        )
+
         session.delete(db_participant)
         session.commit()
+
         return {"ok": True}
 
 
@@ -300,7 +348,7 @@ def delete_participant(participant_id: int):
 VALID_PAYMENT_STATUSES = {"pending_review", "confirmed", "rejected"}
 
 
-@app.get("/payments")
+@app.get("/payments", dependencies=[Depends(verify_admin_session)])
 def get_payments(status: Optional[str] = None):
     if status is not None and status not in VALID_PAYMENT_STATUSES:
         raise HTTPException(400, "وضعیت نامعتبر. مقادیر مجاز: pending_review, confirmed, rejected")
@@ -312,7 +360,6 @@ def get_payments(status: Optional[str] = None):
 
         payments = session.exec(query).all()
 
-        # افزودن اطلاعات مرتبط Trip و Participant برای نمایش بهتر (بدون تغییر مدل‌ها)
         result = []
         for p in payments:
             trip = session.get(Trip, p.trip_id)
@@ -346,8 +393,8 @@ def get_payments(status: Optional[str] = None):
         return result
 
 
-@app.post("/payments/{payment_id}/confirm")
-async def confirm_payment(payment_id: int):
+@app.post("/payments/{payment_id}/confirm", dependencies=[Depends(verify_admin_session)])
+async def confirm_payment(payment_id: int, _: bool = Depends(verify_admin_api_key)):
     with Session(engine) as session:
         payment = session.get(Payment, payment_id)
         if not payment:
@@ -365,7 +412,7 @@ async def confirm_payment(payment_id: int):
         session.add(payment)
         session.commit()
         session.refresh(payment)
-            # ارسال پیام تأیید فیش به کاربر تلگرام
+
     if telegram_app is not None and payment.telegram_user_id:
         try:
             if payment.payment_type == "deposit":
@@ -399,11 +446,12 @@ async def confirm_payment(payment_id: int):
             )
         except Exception as e:
             logger.error(f"⚠️ خطا در ارسال پیام تأیید پرداخت: {e}")
-        return payment
+
+    return payment
 
 
-@app.post("/payments/{payment_id}/reject")
-def reject_payment(payment_id: int):
+@app.post("/payments/{payment_id}/reject", dependencies=[Depends(verify_admin_session)])
+def reject_payment(payment_id: int, _: bool = Depends(verify_admin_api_key)):
     with Session(engine) as session:
         payment = session.get(Payment, payment_id)
         if not payment:
@@ -424,15 +472,12 @@ def reject_payment(payment_id: int):
         return payment
 
 
-@app.get("/receipts/{filename}")
+@app.get("/receipts/{filename}", dependencies=[Depends(verify_admin_session)])
 def get_receipt(filename: str):
-    # جلوگیری از Path Traversal — فقط فایل‌های داخل پوشه receipts/ سرو می‌شوند
     receipts_dir = os.path.abspath("receipts")
-    # ساخت مسیر کامل داخل receipts و resolve امن
     full_path = os.path.join("receipts", filename)
     safe_path = os.path.abspath(get_receipt_path(full_path))
 
-    # بررسی اینکه مسیر resolve شده داخل receipts_dir باشد
     if not safe_path.startswith(receipts_dir + os.sep):
         raise HTTPException(400, "نام فایل نامعتبر است")
 
