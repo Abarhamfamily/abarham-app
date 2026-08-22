@@ -36,11 +36,11 @@ logger = logging.getLogger("abarham.bot")
 # وضعیت‌های Conversation
 # ---------------------------------------------------------------------------
 
-TRIP_SELECT, NAME, NATIONAL_ID, PHONE = range(4)
+TRIP_SELECT, NUM_PARTICIPANTS, NAME, NATIONAL_ID, PHONE = range(5)
 
-PAY_TRIP_SELECT, PAY_TYPE_SELECT, PAY_RECEIPT = range(4, 7)
+PAY_TRIP_SELECT, PAY_TYPE_SELECT, PAY_RECEIPT = range(5, 8)
 
-VEHICLE_CHOICE, AVAILABLE_SEATS = range(7, 9)
+VEHICLE_CHOICE, AVAILABLE_SEATS = range(8, 10)
 
 
 # ---------------------------------------------------------------------------
@@ -115,7 +115,37 @@ async def select_trip(
     context.user_data["selected_trip_title"] = selected_option
 
     await update.message.reply_text(
-        "لطفاً نام و نام خانوادگی خود را وارد کنید:",
+        "لطفاً تعداد نفرات (شامل خودتان) که می‌خواهید ثبت‌نام کنید را وارد کنید (1 تا 5):",
+        reply_markup=ReplyKeyboardRemove(),
+    )
+
+    return NUM_PARTICIPANTS
+
+
+async def get_num_participants(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+):
+    text = update.message.text.strip()
+    if not text.isdigit():
+        await update.message.reply_text(
+            "لطفاً یک عدد بین 1 و 5 وارد کنید:"
+        )
+        return NUM_PARTICIPANTS
+
+    num = int(text)
+    if num < 1 or num > 5:
+        await update.message.reply_text(
+            "لطفاً یک عدد بین 1 و 5 وارد کنید:"
+        )
+        return NUM_PARTICIPANTS
+
+    context.user_data["num_participants"] = num
+    context.user_data["participant_data_list"] = []
+    context.user_data["current_participant_index"] = 0
+
+    await update.message.reply_text(
+        f"لطفاً نام و نام خانوادگی شرکت‌کننده شماره 1 را وارد کنید:",
         reply_markup=ReplyKeyboardRemove(),
     )
 
@@ -126,6 +156,42 @@ async def get_name(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE
 ):
+    # Initialize participant data for the current index if not present
+    participant_data_list = context.user_data.get("participant_data_list", [])
+    current_index = context.user_data.get("current_participant_index", 0)
+    # Ensure the list has enough entries
+    while len(participant_data_list) <= current_index:
+        participant_data_list.append({})
+    participant_data_list[current_index]["name"] = update.message.text.strip()
+    context.user_data["participant_data_list"] = participant_data_list
+
+    await update.message.reply_text(
+        "لطفاً کد ملی خود را وارد کنید:",
+        reply_markup=ReplyKeyboardRemove(),
+    )
+
+    return NATIONAL_ID
+
+
+async def get_name(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+):
+    # Initialize participant data for the current index if not present
+    participant_data_list = context.user_data.get("participant_data_list", [])
+    current_index = context.user_data.get("current_participant_index", 0)
+    # Ensure the list has enough entries
+    while len(participant_data_list) <= current_index:
+        participant_data_list.append({})
+    participant_data_list[current_index]["name"] = update.message.text.strip()
+    context.user_data["participant_data_list"] = participant_data_list
+
+    await update.message.reply_text(
+        "لطفاً کد ملی خود را وارد کنید:",
+        reply_markup=ReplyKeyboardRemove(),
+    )
+
+    return NATIONAL_ID
     full_name = update.message.text.strip()
 
     if len(full_name) < 3:
@@ -143,10 +209,7 @@ async def get_name(
     return NATIONAL_ID
 
 
-async def get_national_id(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE
-):
+async def get_national_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
     national_id = update.message.text.strip()
 
     if not national_id.isdigit() or len(national_id) != 10:
@@ -168,36 +231,110 @@ async def get_national_id(
 
     if existing:
         await update.message.reply_text(
-            "❌ شما قبلاً با این کد ملی برای این تور ثبت‌نام کرده‌اید.",
+            "❌ این کد ملی قبلاً برای این تور ثبت‌نام شده است.",
             reply_markup=ReplyKeyboardRemove(),
         )
         return ConversationHandler.END
 
-    context.user_data["national_id"] = national_id
+    # Store national_id in the current participant's data
+    participant_data_list = context.user_data.get("participant_data_list", [])
+    current_index = context.user_data.get("current_participant_index", 0)
+    # Ensure the list has enough entries
+    while len(participant_data_list) <= current_index:
+        participant_data_list.append({})
+    participant_data_list[current_index]["national_id"] = national_id
+    context.user_data["participant_data_list"] = participant_data_list
 
-    phone_keyboard = [
-        [
-            KeyboardButton(
-                "📱 ارسال شماره تماس من",
-                request_contact=True,
-            )
-        ]
-    ]
+    # Check if there are more participants to process
+    total_participants = context.user_data.get("num_participants", 0)
+    if current_index < total_participants - 1:
+        # Move to next participant
+        context.user_data["current_participant_index"] = current_index + 1
+        await update.message.reply_text(
+            f"لطفاً نام و نام خانوادگی شرکت‌کننده شماره {current_index + 2} را وارد کنید:",
+            reply_markup=ReplyKeyboardRemove(),
+        )
+        return NAME
+    else:
+        # All participants' names and national IDs collected
+        # Reset current index for potential reuse
+        context.user_data["current_participant_index"] = 0
 
-    reply_markup = ReplyKeyboardMarkup(
-        phone_keyboard,
-        one_time_keyboard=True,
-        resize_keyboard=True,
-    )
+        # Check trip type to decide next step
+        with Session(engine) as session:
+            trip = session.get(Trip, trip_id)
+            if trip.transportation_type == "personal_vehicle":
+                # Ask for vehicle choice (for the group)
+                await update.message.reply_text(
+                    "لطفاً انتخاب کنید: آیا گروه خودرو خود را bringing (own) می‌برد یا سوار بر خودرو دیگر (other) می‌شود؟",
+                    reply_markup=ReplyKeyboardMarkup(
+                        [["own"], ["other"]],
+                        one_time_keyboard=True,
+                        resize_keyboard=True,
+                    ),
+                )
+                return VEHICLE_CHOICE
+            else:
+                # For non-personal_vehicle trips, ask for phone number
+                await update.message.reply_text(
+                    "لطفاً شماره تماس خود را وارد کنید:",
+                    reply_markup=ReplyKeyboardRemove(),
+                )
+                return PHONE
 
+
+async def vehicle_choice_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    choice = update.message.text.strip().lower()
+    context.user_data["vehicle_choice"] = choice
+
+    if choice == "own":
+        await update.message.reply_text(
+            "لطفاً تعداد صندلی‌های قابل ارائه توسط خودرو خود را (0-3) وارد کنید:",
+            reply_markup=ReplyKeyboardRemove(),
+        )
+        return AVAILABLE_SEATS
+    else:  # other
+        trip_id = context.user_data.get("trip_id")
+        with Session(engine) as session:
+            trip = session.get(Trip, trip_id)
+            total_participants = context.user_data.get("num_participants", 0)
+            if trip.available_seats >= total_participants:
+                # Enough seats, ask for phone number
+                await update.message.reply_text(
+                    "لطفاً شماره تماس خود را وارد کنید:",
+                    reply_markup=ReplyKeyboardRemove(),
+                )
+                return PHONE
+            else:
+                await update.message.reply_text(
+                    f"❌ تعداد صندلی‌های موجود در تور ({trip.available_seats}) کافی برای تعداد شرکت‌کنندگان ({total_participants}) نیست.\n"
+                    "لطفاً انتخاب وسیله نقلیه را تغییر دهید:",
+                    reply_markup=ReplyKeyboardMarkup(
+                        [["own"], ["other"]],
+                        one_time_keyboard=True,
+                        resize_keyboard=True,
+                    ),
+                )
+                return VEHICLE_CHOICE
+
+async def available_seats_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    try:
+        seats = int(update.message.text.strip())
+        if seats < 0 or seats > 3:
+            raise ValueError
+    except ValueError:
+        await update.message.reply_text(
+            "لطفاً عددی بین 0 و 3 وارد کنید:",
+            reply_markup=ReplyKeyboardRemove(),
+        )
+        return AVAILABLE_SEATS
+
+    context.user_data["available_seats"] = seats
     await update.message.reply_text(
-        "لطفاً شماره تماس خود را وارد کنید یا از دکمه زیر جهت ارسال سریع استفاده کنید:",
-        reply_markup=reply_markup,
+        "لطفاً شماره تماس خود را وارد کنید:",
+        reply_markup=ReplyKeyboardRemove(),
     )
-
     return PHONE
-
-
 # ===========================================================================
 # دریافت شماره تماس و تکمیل ثبت‌نام
 # ===========================================================================
@@ -208,6 +345,88 @@ async def get_phone_and_save(update: Update, context: ContextTypes.DEFAULT_TYPE)
         if update.message.contact
         else update.message.text.strip()
     )
+
+    context.user_data["phone_number"] = phone_number
+
+    try:
+        trip_id = context.user_data.get("trip_id")
+        with Session(engine) as session:
+            trip = session.get(Trip, trip_id)
+            if not trip:
+                await update.message.reply_text(
+                    "❌ این تور دیگر موجود نیست.",
+                    reply_markup=ReplyKeyboardRemove(),
+                )
+                return ConversationHandler.END
+
+            total_participants = len(context.user_data.get("participant_data_list", []))
+            vehicle_choice = context.user_data.get("vehicle_choice")
+            per_participant_price = trip.price + (trip.vehicle_fare if vehicle_choice == "other" else 0)
+            total_price = per_participant_price * total_participants
+
+            # Create participant records
+            participants = []
+            participant_data_list = context.user_data.get("participant_data_list", [])
+            for idx, pdata in enumerate(participant_data_list):
+                # Determine available_seats: only the driver (first participant) in 'own' vehicle choice has the offered seats
+                avail_seats = 0
+                if vehicle_choice == "own" and idx == 0:
+                    avail_seats = context.user_data.get("available_seats", 0)
+                participant = Participant(
+                    full_name=pdata["name"],
+                    national_id=pdata["national_id"],
+                    phone_number=phone_number,
+                    trip_id=trip_id,
+                    telegram_user_id=update.effective_user.id,
+                    vehicle_choice=vehicle_choice,
+                    available_seats=avail_seats,
+                )
+                session.add(participant)
+                participants.append(participant)
+
+            session.flush()  # Ensure participants have IDs
+
+            # Create a single payment record for the group (linked to the first participant)
+            payment = Payment(
+                participant_id=participants[0].id,
+                trip_id=trip_id,
+                amount=total_price,
+                type="deposit",
+                status="pending",
+            )
+            session.add(payment)
+            session.commit()
+
+        # Set up data for payment flow
+        context.user_data["payment_trip_id"] = trip_id
+        context.user_data["payment_participant_id"] = participants[0].id
+        context.user_data["payment_expected_amount"] = total_price
+
+        await update.message.reply_text(
+            f"✅ ثبت‌نام گروه با موفقیت انجام شد.\n"
+            f"مجموع قابل پرداخت: {total_price:,.0f} تومان\n"
+            f"لطفاً برای پرداخت مراحل زیر را دنبال کنید:",
+            reply_markup=ReplyKeyboardRemove(),
+        )
+        return PAY_TRIP_SELECT
+
+    except Exception as e:
+        logger.error(
+            f"خطا در ثبت‌نام مسافر: {e}",
+            exc_info=True,
+        )
+        await update.message.reply_text(
+            "❌ خطایی در ذخیره اطلاعات رخ داد. لطفاً مجدداً تلاش کنید.",
+            reply_markup=ReplyKeyboardRemove(),
+        )
+        return ConversationHandler.END
+async def get_phone_and_save(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    phone_number = (
+        update.message.contact.phone_number
+        if update.message.contact
+        else update.message.text.strip()
+    )
+
 
     context.user_data["phone_number"] = phone_number
 

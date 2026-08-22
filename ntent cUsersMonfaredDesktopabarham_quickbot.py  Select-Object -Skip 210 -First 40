@@ -1,0 +1,101 @@
+[1mdiff --git a/bot.py b/bot.py[m
+[1mindex dbcd4d79..4e4275ac 100644[m
+[1m--- a/bot.py[m
+[1m+++ b/bot.py[m
+[36m@@ -36,11 +36,11 @@[m [mlogger = logging.getLogger("abarham.bot")[m
+ # وضعیت‌های Conversation[m
+ # ---------------------------------------------------------------------------[m
+ [m
+[31m-TRIP_SELECT, NAME, NATIONAL_ID, PHONE = range(4)[m
+[32m+[m[32mTRIP_SELECT, NUM_PARTICIPANTS, NAME, NATIONAL_ID, PHONE = range(5)[m
+ [m
+[31m-PAY_TRIP_SELECT, PAY_TYPE_SELECT, PAY_RECEIPT = range(4, 7)[m
+[32m+[m[32mPAY_TRIP_SELECT, PAY_TYPE_SELECT, PAY_RECEIPT = range(5, 8)[m
+ [m
+[31m-VEHICLE_CHOICE, AVAILABLE_SEATS = range(7, 9)[m
+[32m+[m[32mVEHICLE_CHOICE, AVAILABLE_SEATS = range(8, 10)[m
+ [m
+ [m
+ # ---------------------------------------------------------------------------[m
+[36m@@ -115,7 +115,37 @@[m [masync def select_trip([m
+     context.user_data["selected_trip_title"] = selected_option[m
+ [m
+     await update.message.reply_text([m
+[31m-        "لطفاً نام و نام خانوادگی خود را وارد کنید:",[m
+[32m+[m[32m        "لطفاً تعداد نفرات (شامل خودتان) که می‌خواهید ثبت‌نام کنید را وارد کنید (1 تا 5):",[m
+[32m+[m[32m        reply_markup=ReplyKeyboardRemove(),[m
+[32m+[m[32m    )[m
+[32m+[m
+[32m+[m[32m    return NUM_PARTICIPANTS[m
+[32m+[m
+[32m+[m
+[32m+[m[32masync def get_num_participants([m
+[32m+[m[32m    update: Update,[m
+[32m+[m[32m    context: ContextTypes.DEFAULT_TYPE[m
+[32m+[m[32m):[m
+[32m+[m[32m    text = update.message.text.strip()[m
+[32m+[m[32m    if not text.isdigit():[m
+[32m+[m[32m        await update.message.reply_text([m
+[32m+[m[32m            "لطفاً یک عدد بین 1 و 5 وارد کنید:"[m
+[32m+[m[32m        )[m
+[32m+[m[32m        return NUM_PARTICIPANTS[m
+[32m+[m
+[32m+[m[32m    num = int(text)[m
+[32m+[m[32m    if num < 1 or num > 5:[m
+[32m+[m[32m        await update.message.reply_text([m
+[32m+[m[32m            "لطفاً یک عدد بین 1 و 5 وارد کنید:"[m
+[32m+[m[32m        )[m
+[32m+[m[32m        return NUM_PARTICIPANTS[m
+[32m+[m
+[32m+[m[32m    context.user_data["num_participants"] = num[m
+[32m+[m[32m    context.user_data["participant_data_list"] = [][m
+[32m+[m[32m    context.user_data["current_participant_index"] = 0[m
+[32m+[m
+[32m+[m[32m    await update.message.reply_text([m
+[32m+[m[32m        f"لطفاً نام و نام خانوادگی شرکت‌کننده شماره 1 را وارد کنید:",[m
+         reply_markup=ReplyKeyboardRemove(),[m
+     )[m
+ [m
+[36m@@ -126,6 +156,42 @@[m [masync def get_name([m
+     update: Update,[m
+     context: ContextTypes.DEFAULT_TYPE[m
+ ):[m
+[32m+[m[32m    # Initialize participant data for the current index if not present[m
+[32m+[m[32m    participant_data_list = context.user_data.get("participant_data_list", [])[m
+[32m+[m[32m    current_index = context.user_data.get("current_participant_index", 0)[m
+[32m+[m[32m    # Ensure the list has enough entries[m
+[32m+[m[32m    while len(participant_data_list) <= current_index:[m
+[32m+[m[32m        participant_data_list.append({})[m
+[32m+[m[32m    participant_data_list[current_index]["name"] = update.message.text.strip()[m
+[32m+[m[32m    context.user_data["participant_data_list"] = participant_data_list[m
+[32m+[m
+[32m+[m[32m    await update.message.reply_text([m
+[32m+[m[32m        "لطفاً کد ملی خود را وارد کنید:",[m
+[32m+[m[32m        reply_markup=ReplyKeyboardRemove(),[m
+[32m+[m[32m    )[m
+[32m+[m
+[32m+[m[32m    return NATIONAL_ID[m
+[32m+[m
+[32m+[m
+[32m+[m[32masync def get_name([m
+[32m+[m[32m    update: Update,[m
+[32m+[m[32m    context: ContextTypes.DEFAULT_TYPE[m
+[32m+[m[32m):[m
+[32m+[m[32m    # Initialize participant data for the current index if not present[m
+[32m+[m[32m    participant_data_list = context.user_data.get("participant_data_list", [])[m
+[32m+[m[32m    current_index = context.user_data.get("current_participant_index", 0)[m
+[32m+[m[32m    # Ensure the list has enough entries[m
+[32m+[m[32m    while len(participant_data_list) <= current_index:[m
+[32m+[m[32m        participant_data_list.append({})[m
+[32m+[m[32m    participant_data_list[current_index]["name"] = update.message.text.strip()[m
+[32m+[m[32m    context.user_data["participant_data_list"] = participant_data_list[m
+[32m+[m
+[32m+[m[32m    await update.message.reply_text([m
+[32m+[m[32m        "لطفاً کد ملی خود را وارد کنید:",[m
+[32m+[m[32m        reply_markup=ReplyKeyboardRemove(),[m
+[32m+[m[32m    )[m
+[32m+[m
+[32m+[m[32m    return NATIONAL_ID[m
+     full_name = update.message.text.strip()[m
+ [m
+     if len(full_name) < 3:[m

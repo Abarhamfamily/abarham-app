@@ -311,6 +311,17 @@
                     <input type="number" id="t_price" required>
                 </div>
                 <div class="form-group">
+                    <label>نوع وسیله نقلیه سفر</label>
+                    <select id="t_transportation_type">
+                        <option value="group_vehicle">گروهی</option>
+                        <option value="personal_vehicle">خودروی شخصی</option>
+                    </select>
+                </div>
+                <div class="form-group" id="t_vehicle_fare_group">
+                    <label>کرایه خودرو (تومان)</label>
+                    <input type="number" id="t_vehicle_fare" placeholder="مبلغ اضافی در صورت انتخاب خودروی شخصی">
+                </div>
+                <div class="form-group">
                     <label>ظرفیت (۰ = نامحدود)</label>
                     <input type="number" id="t_capacity" value="0" min="0">
                 </div>
@@ -345,6 +356,18 @@
                 <div class="form-group">
                     <label>شماره تماس</label>
                     <input type="text" id="p_phone" required>
+                </div>
+                <div class="form-group">
+                    <label>وضعیت ماشین</label>
+                    <select id="p_vehicle_choice">
+                        <option value="ندارد">ندارد</option>
+                        <option value="ماشین شخصی">ماشین شخصی</option>
+                        <option value="ماشین سایر اعضا">ماشین سایر اعضا</option>
+                    </select>
+                </div>
+                <div class="form-group" id="p_available_seats_group" style="display: none;">
+                    <label>ظرفیت خالی صندلی</label>
+                    <input type="number" id="p_available_seats" min="0" max="3" placeholder="۰ تا ۳ صندلی">
                 </div>
                 <div class="form-group">
                     <label>وضعیت پرداخت</label>
@@ -565,8 +588,17 @@
             date: document.getElementById('t_date').value,
             price: parseFloat(document.getElementById('t_price').value) || 0,
             capacity: parseInt(document.getElementById('t_capacity').value) || 0,
-            telegram_group_link: document.getElementById('t_group').value || null
+            telegram_group_link: document.getElementById('t_group').value || null,
+            transportation_type: document.getElementById('t_transportation_type').value
         };
+        
+        const transportationType = document.getElementById('t_transportation_type').value;
+        if (transportationType === 'personal_vehicle') {
+            const vehicleFare = parseFloat(document.getElementById('t_vehicle_fare').value);
+            if (!isNaN(vehicleFare)) {
+                tripData.vehicle_fare = vehicleFare;
+            }
+        }
 
         const method = tripId ? 'PUT' : 'POST';
         const url = tripId ? `/trips/${tripId}` : '/trips';
@@ -613,7 +645,9 @@
             phone_number: document.getElementById('p_phone').value,
             trip_id: parseInt(tripId),
             payment_status: document.getElementById('p_status').value,
-            paid_amount: parseFloat(document.getElementById('p_paid').value) || 0
+            paid_amount: parseFloat(document.getElementById('p_paid').value) || 0,
+            vehicle_choice: document.getElementById('p_vehicle_choice').value,
+            available_seats: parseInt(document.getElementById('p_available_seats').value) || 0
         };
 
         const method = participantId ? 'PUT' : 'POST';
@@ -726,6 +760,16 @@
         document.getElementById('tripFormTitle').textContent = '۱. ثبت تور جدید';
         document.getElementById('t_btn').textContent = 'ثبت تور';
         document.getElementById('t_cancel_btn').style.display = 'none';
+        
+        // Reset vehicle fare visibility
+        const transportTypeSelect = document.getElementById('t_transportation_type');
+        const vehicleFareGroup = document.getElementById('t_vehicle_fare_group');
+        if (transportTypeSelect && vehicleFareGroup) {
+            // Reset to default (group vehicle)
+            transportTypeSelect.value = 'group_vehicle';
+            vehicleFareGroup.style.display = 'none';
+            document.getElementById('t_vehicle_fare').value = '';
+        }
     }
 
     function resetParticipantForm() {
@@ -734,6 +778,16 @@
         document.getElementById('participantFormTitle').textContent = '۲. ثبت‌نام مسافر جدید';
         document.getElementById('p_btn').textContent = 'ثبت مسافر';
         document.getElementById('p_cancel_btn').style.display = 'none';
+        
+        // Reset vehicle choice and available seats visibility
+        const vehicleChoiceSelect = document.getElementById('p_vehicle_choice');
+        const availableSeatsGroup = document.getElementById('p_available_seats_group');
+        if (vehicleChoiceSelect && availableSeatsGroup) {
+            // Reset to default (ندارد)
+            vehicleChoiceSelect.value = 'ندارد';
+            availableSeatsGroup.style.display = 'none';
+            document.getElementById('p_available_seats').value = '';
+        }
     }
 
     // ۹. دریافت داده‌ها از سرور و نمایش روی جدول
@@ -1129,7 +1183,64 @@
             navigator.serviceWorker.register('/sw.js')
                 .then(reg => console.log('Service Worker فعال شد:', reg.scope))
                 .catch(err => console.log('خطا در Service Worker:', err));
+                
+            // Initialize form field interactions
+            initFormInteractions();
         });
+    } else {
+        // Even if service worker is not supported, initialize form interactions
+        window.addEventListener('load', initFormInteractions);
+    }
+    
+    // Initialize form interactions for showing/hiding fields based on selection
+    function initFormInteractions() {
+        // Trip form: Show/hide vehicle fare based on transportation type
+        const transportTypeSelect = document.getElementById('t_transportation_type');
+        const vehicleFareGroup = document.getElementById('t_vehicle_fare_group');
+        
+        if (transportTypeSelect && vehicleFareGroup) {
+            // Set initial state
+            if (transportTypeSelect.value === 'personal_vehicle') {
+                vehicleFareGroup.style.display = 'block';
+            } else {
+                vehicleFareGroup.style.display = 'none';
+            }
+            
+            // Add event listener
+            transportTypeSelect.addEventListener('change', () => {
+                if (transportTypeSelect.value === 'personal_vehicle') {
+                    vehicleFareGroup.style.display = 'block';
+                } else {
+                    vehicleFareGroup.style.display = 'none';
+                    // Clear the value when hidden
+                    document.getElementById('t_vehicle_fare').value = '';
+                }
+            });
+        }
+        
+        // Participant form: Show/hide available seats based on vehicle choice
+        const vehicleChoiceSelect = document.getElementById('p_vehicle_choice');
+        const availableSeatsGroup = document.getElementById('p_available_seats_group');
+        
+        if (vehicleChoiceSelect && availableSeatsGroup) {
+            // Set initial state
+            if (vehicleChoiceSelect.value === 'ماشین شخصی') {
+                availableSeatsGroup.style.display = 'block';
+            } else {
+                availableSeatsGroup.style.display = 'none';
+            }
+            
+            // Add event listener
+            vehicleChoiceSelect.addEventListener('change', () => {
+                if (vehicleChoiceSelect.value === 'ماشین شخصی') {
+                    availableSeatsGroup.style.display = 'block';
+                } else {
+                    availableSeatsGroup.style.display = 'none';
+                    // Clear the value when hidden
+                    document.getElementById('p_available_seats').value = '';
+                }
+            });
+        }
     }
 </script>
 </body>
