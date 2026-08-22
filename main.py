@@ -9,13 +9,14 @@ from fastapi.responses import JSONResponse, HTMLResponse, FileResponse, Response
 from starlette.middleware.sessions import SessionMiddleware
 from sqlmodel import Session, select, delete
 
-# Import local models and helpers
-from database import engine, run_migrations
-from models import Trip, Participant, Payment
+# Import local models, helpers, and migration script
+from models import Trip, Participant, Payment, engine
+from migration import run_migrations
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # اجرای مایگریشن‌های دیتابیس در زمان استارت‌آپ سرور
     try:
         run_migrations()
     except Exception as e:
