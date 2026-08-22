@@ -1,4 +1,4 @@
-import logging
+﻿import logging
 import os
 import uuid
 
@@ -62,16 +62,16 @@ def get_active_trips():
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     welcome_text = (
-        f"سلام {user.first_name} عزیز! 👋\n"
-        "به سیستم ثبت‌نام و مدیریت تورهای **ابرهام** خوش آمدید.\n\n"
-        "جهت ثبت‌نام در تورها از دستور /register و جهت تکمیل پرداخت از /pay استفاده کنید."
+        f"Ø³Ù„Ø§Ù… {user.first_name} Ø¹Ø²ÛŒØ²! ðŸ‘‹\n"
+        "Ø¨Ù‡ Ø³ÛŒØ³ØªÙ… Ø«Ø¨Øªâ€ŒÙ†Ø§Ù… Ùˆ Ù…Ø¯ÛŒØ±ÛŒØª ØªÙˆØ±Ù‡Ø§ÛŒ **Ø§Ø¨Ø±Ù‡Ø§Ù…** Ø®ÙˆØ´ Ø¢Ù…Ø¯ÛŒØ¯.\n\n"
+        "Ø¬Ù‡Øª Ø«Ø¨Øªâ€ŒÙ†Ø§Ù… Ø¯Ø± ØªÙˆØ±Ù‡Ø§ Ø§Ø² Ø¯Ø³ØªÙˆØ± /register Ùˆ Ø¬Ù‡Øª ØªÚ©Ù…ÛŒÙ„ Ù¾Ø±Ø¯Ø§Ø®Øª Ø§Ø² /pay Ø§Ø³ØªÙØ§Ø¯Ù‡ Ú©Ù†ÛŒØ¯."
     )
     await update.message.reply_text(welcome_text, parse_mode="Markdown")
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.clear()
     await update.message.reply_text(
-        "❌ عملیات لغو شد. می‌توانید مجدداً از دستورات ربات استفاده کنید.",
+        "âŒ Ø¹Ù…Ù„ÛŒØ§Øª Ù„ØºÙˆ Ø´Ø¯. Ù…ÛŒâ€ŒØªÙˆØ§Ù†ÛŒØ¯ Ù…Ø¬Ø¯Ø¯Ø§Ù‹ Ø§Ø² Ø¯Ø³ØªÙˆØ±Ø§Øª Ø±Ø¨Ø§Øª Ø§Ø³ØªÙØ§Ø¯Ù‡ Ú©Ù†ÛŒØ¯.",
         reply_markup=ReplyKeyboardRemove(),
     )
     return ConversationHandler.END
@@ -83,15 +83,15 @@ async def start_registration(update: Update, context: ContextTypes.DEFAULT_TYPE)
     context.user_data.clear()
     trips = get_active_trips()
     if not trips:
-        await update.message.reply_text("در حال حاضر هیچ تور فعالی برای ثبت‌نام وجود ندارد.")
+        await update.message.reply_text("Ø¯Ø± Ø­Ø§Ù„ Ø­Ø§Ø¶Ø± Ù‡ÛŒÚ† ØªÙˆØ± ÙØ¹Ø§Ù„ÛŒ Ø¨Ø±Ø§ÛŒ Ø«Ø¨Øªâ€ŒÙ†Ø§Ù… ÙˆØ¬ÙˆØ¯ Ù†Ø¯Ø§Ø±Ø¯.")
         return ConversationHandler.END
 
     keyboard = []
     for trip in trips:
-        keyboard.append([InlineKeyboardButton(f"🌲 {trip.title} ({trip.price:,.0f} تومان)", callback_data=f"trip:{trip.id}")])
+        keyboard.append([InlineKeyboardButton(f"ðŸŒ² {trip.title} ({trip.price:,.0f} ØªÙˆÙ…Ø§Ù†)", callback_data=f"trip:{trip.id}")])
 
     reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.message.reply_text("لطفاً تور مورد نظر خود را برای ثبت‌نام انتخاب کنید:", reply_markup=reply_markup)
+    await update.message.reply_text("Ù„Ø·ÙØ§Ù‹ ØªÙˆØ± Ù…ÙˆØ±Ø¯ Ù†Ø¸Ø± Ø®ÙˆØ¯ Ø±Ø§ Ø¨Ø±Ø§ÛŒ Ø«Ø¨Øªâ€ŒÙ†Ø§Ù… Ø§Ù†ØªØ®Ø§Ø¨ Ú©Ù†ÛŒØ¯:", reply_markup=reply_markup)
     return TRIP_SELECT
 
 async def trip_selected(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -102,7 +102,7 @@ async def trip_selected(update: Update, context: ContextTypes.DEFAULT_TYPE):
     with Session(engine) as session:
         trip = session.get(Trip, trip_id)
         if not trip:
-            await query.edit_message_text("تور مورد نظر یافت نشد.")
+            await query.edit_message_text("ØªÙˆØ± Ù…ÙˆØ±Ø¯ Ù†Ø¸Ø± ÛŒØ§ÙØª Ù†Ø´Ø¯.")
             return ConversationHandler.END
         
         context.user_data["trip_id"] = trip.id
@@ -112,11 +112,11 @@ async def trip_selected(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data["group_id"] = str(uuid.uuid4())
 
     keyboard = [
-        [InlineKeyboardButton("۱ نفر (تک‌نفره)", callback_data="num:1")],
-        [InlineKeyboardButton("۲ نفر", callback_data="num:2"), InlineKeyboardButton("۳ نفر", callback_data="num:3")],
-        [InlineKeyboardButton("۴ نفر", callback_data="num:4"), InlineKeyboardButton("۵ نفر", callback_data="num:5")],
+        [InlineKeyboardButton("Û± Ù†ÙØ± (ØªÚ©â€ŒÙ†ÙØ±Ù‡)", callback_data="num:1")],
+        [InlineKeyboardButton("Û² Ù†ÙØ±", callback_data="num:2"), InlineKeyboardButton("Û³ Ù†ÙØ±", callback_data="num:3")],
+        [InlineKeyboardButton("Û´ Ù†ÙØ±", callback_data="num:4"), InlineKeyboardButton("Ûµ Ù†ÙØ±", callback_data="num:5")],
     ]
-    await query.edit_message_text("تعداد افراد جهت ثبت‌نام را انتخاب کنید:", reply_markup=InlineKeyboardMarkup(keyboard))
+    await query.edit_message_text("ØªØ¹Ø¯Ø§Ø¯ Ø§ÙØ±Ø§Ø¯ Ø¬Ù‡Øª Ø«Ø¨Øªâ€ŒÙ†Ø§Ù… Ø±Ø§ Ø§Ù†ØªØ®Ø§Ø¨ Ú©Ù†ÛŒØ¯:", reply_markup=InlineKeyboardMarkup(keyboard))
     return NUM_PARTICIPANTS
 
 async def num_participants_selected(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -127,38 +127,38 @@ async def num_participants_selected(update: Update, context: ContextTypes.DEFAUL
     context.user_data["total_count"] = count
     context.user_data["current_index"] = 1
 
-    await query.edit_message_text(f"ثبت‌نام برای {count} نفر.\n\nلطفاً **نام و نام خانوادگی** نفر اول را وارد کنید:")
+    await query.edit_message_text(f"Ø«Ø¨Øªâ€ŒÙ†Ø§Ù… Ø¨Ø±Ø§ÛŒ {count} Ù†ÙØ±.\n\nÙ„Ø·ÙØ§Ù‹ **Ù†Ø§Ù… Ùˆ Ù†Ø§Ù… Ø®Ø§Ù†ÙˆØ§Ø¯Ú¯ÛŒ** Ù†ÙØ± Ø§ÙˆÙ„ Ø±Ø§ ÙˆØ§Ø±Ø¯ Ú©Ù†ÛŒØ¯:")
     return NAME
 
 async def get_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
     name = update.message.text.strip()
     if len(name) < 3:
-        await update.message.reply_text("نام وارد شده بسیار کوتاه است. لطفاً نام و نام خانوادگی کامل را وارد کنید:")
+        await update.message.reply_text("Ù†Ø§Ù… ÙˆØ§Ø±Ø¯ Ø´Ø¯Ù‡ Ø¨Ø³ÛŒØ§Ø± Ú©ÙˆØªØ§Ù‡ Ø§Ø³Øª. Ù„Ø·ÙØ§Ù‹ Ù†Ø§Ù… Ùˆ Ù†Ø§Ù… Ø®Ø§Ù†ÙˆØ§Ø¯Ú¯ÛŒ Ú©Ø§Ù…Ù„ Ø±Ø§ ÙˆØ§Ø±Ø¯ Ú©Ù†ÛŒØ¯:")
         return NAME
 
     current_p = {"full_name": name}
     context.user_data["temp_participant"] = current_p
     
     idx = context.user_data["current_index"]
-    await update.message.reply_text(f"لطفاً **کد ملی** نفر {idx} را وارد کنید:")
+    await update.message.reply_text(f"Ù„Ø·ÙØ§Ù‹ **Ú©Ø¯ Ù…Ù„ÛŒ** Ù†ÙØ± {idx} Ø±Ø§ ÙˆØ§Ø±Ø¯ Ú©Ù†ÛŒØ¯:")
     return NATIONAL_ID
 
 async def get_national_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
     national_id = update.message.text.strip()
     if not national_id.isdigit() or len(national_id) != 10:
-        await update.message.reply_text("کد ملی باید یک عدد ۱۰ رقمی باشد. لطفاً مجدداً وارد کنید:")
+        await update.message.reply_text("Ú©Ø¯ Ù…Ù„ÛŒ Ø¨Ø§ÛŒØ¯ ÛŒÚ© Ø¹Ø¯Ø¯ Û±Û° Ø±Ù‚Ù…ÛŒ Ø¨Ø§Ø´Ø¯. Ù„Ø·ÙØ§Ù‹ Ù…Ø¬Ø¯Ø¯Ø§Ù‹ ÙˆØ§Ø±Ø¯ Ú©Ù†ÛŒØ¯:")
         return NATIONAL_ID
 
     context.user_data["temp_participant"]["national_id"] = national_id
     idx = context.user_data["current_index"]
     
-    await update.message.reply_text(f"لطفاً **شماره همراه** نفر {idx} را وارد کنید:")
+    await update.message.reply_text(f"Ù„Ø·ÙØ§Ù‹ **Ø´Ù…Ø§Ø±Ù‡ Ù‡Ù…Ø±Ø§Ù‡** Ù†ÙØ± {idx} Ø±Ø§ ÙˆØ§Ø±Ø¯ Ú©Ù†ÛŒØ¯:")
     return PHONE
 
 async def get_phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
     phone = update.message.text.strip()
     if not phone.startswith("09") or len(phone) != 11:
-        await update.message.reply_text("شماره همراه نامعتبر است. نمونه صحیح: 09123456789")
+        await update.message.reply_text("Ø´Ù…Ø§Ø±Ù‡ Ù‡Ù…Ø±Ø§Ù‡ Ù†Ø§Ù…Ø¹ØªØ¨Ø± Ø§Ø³Øª. Ù†Ù…ÙˆÙ†Ù‡ ØµØ­ÛŒØ­: 09123456789")
         return PHONE
 
     temp_p = context.user_data.pop("temp_participant")
@@ -172,13 +172,13 @@ async def get_phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if current_idx < total_count:
         context.user_data["current_index"] += 1
         next_idx = context.user_data["current_index"]
-        await update.message.reply_text(f"اطلاعات نفر {current_idx} ثبت شد.\n\nحال لطفاً **نام و نام خانوادگی** نفر {next_idx} را وارد کنید:")
+        await update.message.reply_text(f"Ø§Ø·Ù„Ø§Ø¹Ø§Øª Ù†ÙØ± {current_idx} Ø«Ø¨Øª Ø´Ø¯.\n\nØ­Ø§Ù„ Ù„Ø·ÙØ§Ù‹ **Ù†Ø§Ù… Ùˆ Ù†Ø§Ù… Ø®Ø§Ù†ÙˆØ§Ø¯Ú¯ÛŒ** Ù†ÙØ± {next_idx} Ø±Ø§ ÙˆØ§Ø±Ø¯ Ú©Ù†ÛŒØ¯:")
         return NAME
 
     if context.user_data["transportation_type"] == "personal_vehicle":
-        reply_keyboard = [["🚗 ماشین شخصی خودم"], ["🚙 ماشین یکی از اعضای ابرهام"]]
+        reply_keyboard = [["ðŸš— Ù…Ø§Ø´ÛŒÙ† Ø´Ø®ØµÛŒ Ø®ÙˆØ¯Ù…"], ["ðŸš™ Ù…Ø§Ø´ÛŒÙ† ÛŒÚ©ÛŒ Ø§Ø² Ø§Ø¹Ø¶Ø§ÛŒ Ø§Ø¨Ø±Ù‡Ø§Ù…"]]
         await update.message.reply_text(
-            "وضعیت خودروی خود را برای سفر مشخص کنید:",
+            "ÙˆØ¶Ø¹ÛŒØª Ø®ÙˆØ¯Ø±ÙˆÛŒ Ø®ÙˆØ¯ Ø±Ø§ Ø¨Ø±Ø§ÛŒ Ø³ÙØ± Ù…Ø´Ø®Øµ Ú©Ù†ÛŒØ¯:",
             reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True),
         )
         return VEHICLE_CHOICE
@@ -187,9 +187,9 @@ async def get_phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def get_vehicle_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     choice = update.message.text.strip()
-    if "شخصی" in choice:
+    if "Ø´Ø®ØµÛŒ" in choice:
         context.user_data["vehicle_choice"] = "personal"
-        await update.message.reply_text("چند صندلی خالی برای همراهی سایر اعضا دارید؟ (اگر صندلی خالی ندارید 0 بفرستید)", reply_markup=ReplyKeyboardRemove())
+        await update.message.reply_text("Ú†Ù†Ø¯ ØµÙ†Ø¯Ù„ÛŒ Ø®Ø§Ù„ÛŒ Ø¨Ø±Ø§ÛŒ Ù‡Ù…Ø±Ø§Ù‡ÛŒ Ø³Ø§ÛŒØ± Ø§Ø¹Ø¶Ø§ Ø¯Ø§Ø±ÛŒØ¯ØŸ (Ø§Ú¯Ø± ØµÙ†Ø¯Ù„ÛŒ Ø®Ø§Ù„ÛŒ Ù†Ø¯Ø§Ø±ÛŒØ¯ 0 Ø¨ÙØ±Ø³ØªÛŒØ¯)", reply_markup=ReplyKeyboardRemove())
         return AVAILABLE_SEATS
     else:
         context.user_data["vehicle_choice"] = "abraham_member"
@@ -199,7 +199,7 @@ async def get_vehicle_choice(update: Update, context: ContextTypes.DEFAULT_TYPE)
 async def get_available_seats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.strip()
     if not text.isdigit():
-        await update.message.reply_text("لطفاً یک عدد معتبر وارد کنید:")
+        await update.message.reply_text("Ù„Ø·ÙØ§Ù‹ ÛŒÚ© Ø¹Ø¯Ø¯ Ù…Ø¹ØªØ¨Ø± ÙˆØ§Ø±Ø¯ Ú©Ù†ÛŒØ¯:")
         return AVAILABLE_SEATS
 
     context.user_data["available_seats"] = int(text)
@@ -236,14 +236,14 @@ async def proceed_to_payment_selection(update: Update, context: ContextTypes.DEF
     deposit_amount = calculate_deposit(total_group_price)
 
     keyboard = [
-        [InlineKeyboardButton(f"💳 پرداخت بیعانه ({deposit_amount:,.0f} تومان)", callback_data="paytype:deposit")],
-        [InlineKeyboardButton(f"💰 پرداخت کامل ({total_group_price:,.0f} تومان)", callback_data="paytype:full")],
+        [InlineKeyboardButton(f"ðŸ’³ Ù¾Ø±Ø¯Ø§Ø®Øª Ø¨ÛŒØ¹Ø§Ù†Ù‡ ({deposit_amount:,.0f} ØªÙˆÙ…Ø§Ù†)", callback_data="paytype:deposit")],
+        [InlineKeyboardButton(f"ðŸ’° Ù¾Ø±Ø¯Ø§Ø®Øª Ú©Ø§Ù…Ù„ ({total_group_price:,.0f} ØªÙˆÙ…Ø§Ù†)", callback_data="paytype:full")],
     ]
     
     msg = (
-        f"✅ اطلاعات {len(saved_participants)} نفر با موفقیت ثبت شد.\n\n"
-        f"مبلغ کل تور برای این گروه: {total_group_price:,.0f} تومان\n"
-        "لطفاً نوع پرداخت خود را انتخاب کنید:"
+        f"âœ… Ø§Ø·Ù„Ø§Ø¹Ø§Øª {len(saved_participants)} Ù†ÙØ± Ø¨Ø§ Ù…ÙˆÙÙ‚ÛŒØª Ø«Ø¨Øª Ø´Ø¯.\n\n"
+        f"Ù…Ø¨Ù„Øº Ú©Ù„ ØªÙˆØ± Ø¨Ø±Ø§ÛŒ Ø§ÛŒÙ† Ú¯Ø±ÙˆÙ‡: {total_group_price:,.0f} ØªÙˆÙ…Ø§Ù†\n"
+        "Ù„Ø·ÙØ§Ù‹ Ù†ÙˆØ¹ Ù¾Ø±Ø¯Ø§Ø®Øª Ø®ÙˆØ¯ Ø±Ø§ Ø§Ù†ØªØ®Ø§Ø¨ Ú©Ù†ÛŒØ¯:"
     )
     
     if update.callback_query:
@@ -268,15 +268,15 @@ async def pay_type_selected(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["expected_amount"] = expected_amount
 
     msg = (
-        f"مبلغ قابل پرداخت: **{expected_amount:,.0f} تومان**\n\n"
-        "لطفاً مبلغ فوق را واریز کرده و تصویر فیش واریزی را ارسال کنید."
+        f"Ù…Ø¨Ù„Øº Ù‚Ø§Ø¨Ù„ Ù¾Ø±Ø¯Ø§Ø®Øª: **{expected_amount:,.0f} ØªÙˆÙ…Ø§Ù†**\n\n"
+        "Ù„Ø·ÙØ§Ù‹ Ù…Ø¨Ù„Øº ÙÙˆÙ‚ Ø±Ø§ ÙˆØ§Ø±ÛŒØ² Ú©Ø±Ø¯Ù‡ Ùˆ ØªØµÙˆÛŒØ± ÙÛŒØ´ ÙˆØ§Ø±ÛŒØ²ÛŒ Ø±Ø§ Ø§Ø±Ø³Ø§Ù„ Ú©Ù†ÛŒØ¯."
     )
     await query.edit_message_text(msg, parse_mode="Markdown")
     return PAY_RECEIPT
 
 async def receipt_received(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message.photo:
-        await update.message.reply_text("لطفاً تصویر فیش را به صورت عکس (Photo) ارسال کنید:")
+        await update.message.reply_text("Ù„Ø·ÙØ§Ù‹ ØªØµÙˆÛŒØ± ÙÛŒØ´ Ø±Ø§ Ø¨Ù‡ ØµÙˆØ±Øª Ø¹Ú©Ø³ (Photo) Ø§Ø±Ø³Ø§Ù„ Ú©Ù†ÛŒØ¯:")
         return PAY_RECEIPT
 
     photo = update.message.photo[-1]
@@ -305,8 +305,8 @@ async def receipt_received(update: Update, context: ContextTypes.DEFAULT_TYPE):
         session.commit()
 
     await update.message.reply_text(
-        "🧾 فیش شما با موفقیت ثبت شد و در انتظار بررسی توسط مدیریت است.\n"
-        "نتیجه پس از بررسی از همین طریق به شما اطلاع داده خواهد شد."
+        "ðŸ§¾ ÙÛŒØ´ Ø´Ù…Ø§ Ø¨Ø§ Ù…ÙˆÙÙ‚ÛŒØª Ø«Ø¨Øª Ø´Ø¯ Ùˆ Ø¯Ø± Ø§Ù†ØªØ¸Ø§Ø± Ø¨Ø±Ø±Ø³ÛŒ ØªÙˆØ³Ø· Ù…Ø¯ÛŒØ±ÛŒØª Ø§Ø³Øª.\n"
+        "Ù†ØªÛŒØ¬Ù‡ Ù¾Ø³ Ø§Ø² Ø¨Ø±Ø±Ø³ÛŒ Ø§Ø² Ù‡Ù…ÛŒÙ† Ø·Ø±ÛŒÙ‚ Ø¨Ù‡ Ø´Ù…Ø§ Ø§Ø·Ù„Ø§Ø¹ Ø¯Ø§Ø¯Ù‡ Ø®ÙˆØ§Ù‡Ø¯ Ø´Ø¯."
     )
     context.user_data.clear()
     return ConversationHandler.END
@@ -318,11 +318,11 @@ async def start_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.clear()
     trips = get_active_trips()
     if not trips:
-        await update.message.reply_text("در حال حاضر هیچ تور فعالی یافت نشد.")
+        await update.message.reply_text("Ø¯Ø± Ø­Ø§Ù„ Ø­Ø§Ø¶Ø± Ù‡ÛŒÚ† ØªÙˆØ± ÙØ¹Ø§Ù„ÛŒ ÛŒØ§ÙØª Ù†Ø´Ø¯.")
         return ConversationHandler.END
 
-    keyboard = [[InlineKeyboardButton(f"🌲 {t.title}", callback_data=f"paytrip:{t.id}")] for t in trips]
-    await update.message.reply_text("لطفاً توری که در آن ثبت‌نام کرده‌اید را انتخاب کنید:", reply_markup=InlineKeyboardMarkup(keyboard))
+    keyboard = [[InlineKeyboardButton(f"ðŸŒ² {t.title}", callback_data=f"paytrip:{t.id}")] for t in trips]
+    await update.message.reply_text("Ù„Ø·ÙØ§Ù‹ ØªÙˆØ±ÛŒ Ú©Ù‡ Ø¯Ø± Ø¢Ù† Ø«Ø¨Øªâ€ŒÙ†Ø§Ù… Ú©Ø±Ø¯Ù‡â€ŒØ§ÛŒØ¯ Ø±Ø§ Ø§Ù†ØªØ®Ø§Ø¨ Ú©Ù†ÛŒØ¯:", reply_markup=InlineKeyboardMarkup(keyboard))
     return PAY_TRIP_SELECT
 
 async def pay_trip_selected(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -333,7 +333,7 @@ async def pay_trip_selected(update: Update, context: ContextTypes.DEFAULT_TYPE):
     tg_user_id = update.effective_user.id
 
     with Session(engine) as session:
-        # پیدا کردن ثبت‌نامی که این کاربر نماینده/ثبت‌کننده آن بوده است
+        # Ù¾ÛŒØ¯Ø§ Ú©Ø±Ø¯Ù† Ø«Ø¨Øªâ€ŒÙ†Ø§Ù…ÛŒ Ú©Ù‡ Ø§ÛŒÙ† Ú©Ø§Ø±Ø¨Ø± Ù†Ù…Ø§ÛŒÙ†Ø¯Ù‡/Ø«Ø¨Øªâ€ŒÚ©Ù†Ù†Ø¯Ù‡ Ø¢Ù† Ø¨ÙˆØ¯Ù‡ Ø§Ø³Øª
         participants = session.exec(
             select(Participant).where(
                 Participant.trip_id == trip_id,
@@ -342,13 +342,13 @@ async def pay_trip_selected(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ).all()
 
         if not participants:
-            await query.edit_message_text("هیچ ثبت‌نامی به نام شما برای این تور یافت نشد.")
+            await query.edit_message_text("Ù‡ÛŒÚ† Ø«Ø¨Øªâ€ŒÙ†Ø§Ù…ÛŒ Ø¨Ù‡ Ù†Ø§Ù… Ø´Ù…Ø§ Ø¨Ø±Ø§ÛŒ Ø§ÛŒÙ† ØªÙˆØ± ÛŒØ§ÙØª Ù†Ø´Ø¯.")
             return ConversationHandler.END
 
-        # اگر چند گروه داشت انتخاب کند، در غیر این صورت همون اولی
+        # Ø§Ú¯Ø± Ú†Ù†Ø¯ Ú¯Ø±ÙˆÙ‡ Ø¯Ø§Ø´Øª Ø§Ù†ØªØ®Ø§Ø¨ Ú©Ù†Ø¯ØŒ Ø¯Ø± ØºÛŒØ± Ø§ÛŒÙ† ØµÙˆØ±Øª Ù‡Ù…ÙˆÙ† Ø§ÙˆÙ„ÛŒ
         p = participants[0]
         
-        # محاسبه کل بدهی گروه بر اساس group_id
+        # Ù…Ø­Ø§Ø³Ø¨Ù‡ Ú©Ù„ Ø¨Ø¯Ù‡ÛŒ Ú¯Ø±ÙˆÙ‡ Ø¨Ø± Ø§Ø³Ø§Ø³ group_id
         group_members = session.exec(
             select(Participant).where(Participant.group_id == p.group_id)
         ).all() if p.group_id else [p]
@@ -360,11 +360,11 @@ async def pay_trip_selected(update: Update, context: ContextTypes.DEFAULT_TYPE):
         remaining = total_group_price - confirmed_paid
 
         if remaining <= 0:
-            await query.edit_message_text("✅ تمام هزینه‌های تور برای شما و گروهتان کاملاً تسویه شده است.")
+            await query.edit_message_text("âœ… ØªÙ…Ø§Ù… Ù‡Ø²ÛŒÙ†Ù‡â€ŒÙ‡Ø§ÛŒ ØªÙˆØ± Ø¨Ø±Ø§ÛŒ Ø´Ù…Ø§ Ùˆ Ú¯Ø±ÙˆÙ‡ØªØ§Ù† Ú©Ø§Ù…Ù„Ø§Ù‹ ØªØ³ÙˆÛŒÙ‡ Ø´Ø¯Ù‡ Ø§Ø³Øª.")
             return ConversationHandler.END
 
         if has_pending(p.id):
-            await query.edit_message_text("⏳ شما یک فیش در انتظار بررسی دارید. لطفاً تا زمان تعیین تکلیف آن صبر کنید.")
+            await query.edit_message_text("â³ Ø´Ù…Ø§ ÛŒÚ© ÙÛŒØ´ Ø¯Ø± Ø§Ù†ØªØ¸Ø§Ø± Ø¨Ø±Ø±Ø³ÛŒ Ø¯Ø§Ø±ÛŒØ¯. Ù„Ø·ÙØ§Ù‹ ØªØ§ Ø²Ù…Ø§Ù† ØªØ¹ÛŒÛŒÙ† ØªÚ©Ù„ÛŒÙ Ø¢Ù† ØµØ¨Ø± Ú©Ù†ÛŒØ¯.")
             return ConversationHandler.END
 
         context.user_data["main_participant_id"] = p.id
@@ -373,8 +373,8 @@ async def pay_trip_selected(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data["expected_amount"] = remaining
 
         await query.edit_message_text(
-            f"مبلغ باقی‌مانده جهت تسویه گروه ({len(group_members)} نفر): **{remaining:,.0f} تومان**\n\n"
-            "لطفاً مبلغ فوق را واریز کرده و تصویر فیش را ارسال کنید:",
+            f"Ù…Ø¨Ù„Øº Ø¨Ø§Ù‚ÛŒâ€ŒÙ…Ø§Ù†Ø¯Ù‡ Ø¬Ù‡Øª ØªØ³ÙˆÛŒÙ‡ Ú¯Ø±ÙˆÙ‡ ({len(group_members)} Ù†ÙØ±): **{remaining:,.0f} ØªÙˆÙ…Ø§Ù†**\n\n"
+            "Ù„Ø·ÙØ§Ù‹ Ù…Ø¨Ù„Øº ÙÙˆÙ‚ Ø±Ø§ ÙˆØ§Ø±ÛŒØ² Ú©Ø±Ø¯Ù‡ Ùˆ ØªØµÙˆÛŒØ± ÙÛŒØ´ Ø±Ø§ Ø§Ø±Ø³Ø§Ù„ Ú©Ù†ÛŒØ¯:",
             parse_mode="Markdown"
         )
         return PAY_RECEIPT_ONLY
@@ -427,3 +427,13 @@ async def start_bot():
     await telegram_app.start()
     await telegram_app.updater.start_polling()
     return telegram_app
+            await update.message.reply_text(
+                f"✅ ثبت نام شما با موفقیت انجام شد.\\n\\n"
+                f"🏷️ سفر: {trip.title}\\n"
+                f"👤 نام: {full_name}\\n"
+                f"📞 کد ملی: {national_id}\\n"
+                f"📱 شماره تماس: {phone_number}\\n"
+                f"🚗 انتخاب وسیله نقلیه: {"ماشین شخصی" if vehicle_choice == "own" else "ماشین دیگر"}\\n\\n"
+                f"💷 لطفاً نوع پرداخت را انتخاب کنید:"
+                reply_markup=reply_markup
+            )

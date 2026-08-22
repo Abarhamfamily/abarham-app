@@ -25,7 +25,6 @@ telegram_app = None
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # اجرای مایگریشن‌های دیتابیس با لاگ‌گیری دقیق در زمان استارت‌آپ
     try:
         run_migrations()
         print("[MIGRATION SUCCESS] مایگریشن‌ها با موفقیت اجرا شدند.")
@@ -47,7 +46,6 @@ app.add_middleware(
     max_age=86400
 )
 
-# Admin Authentication Configuration
 ADMIN_USERNAME = os.getenv("ADMIN_USERNAME")
 ADMIN_PASSWORD_HASH = os.getenv("ADMIN_PASSWORD")
 
@@ -56,7 +54,6 @@ if not ADMIN_USERNAME or not ADMIN_PASSWORD_HASH:
 
 
 def hash_password(password: str) -> str:
-    """Hash a password using bcrypt."""
     password_bytes = password.encode('utf-8')
     salt = bcrypt.gensalt()
     hashed = bcrypt.hashpw(password_bytes, salt)
@@ -64,14 +61,12 @@ def hash_password(password: str) -> str:
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify a password against the hashed version."""
     plain_bytes = plain_password.encode('utf-8')
     hashed_bytes = hashed_password.strip().encode('utf-8')
     return bcrypt.checkpw(plain_bytes, hashed_bytes)
 
 
 def verify_admin_session(request: Request):
-    """Verify admin session authentication."""
     if not request.session.get("admin_authenticated"):
         raise HTTPException(
             status_code=401,
@@ -80,7 +75,6 @@ def verify_admin_session(request: Request):
     return True
 
 
-# توابع کمکی مربوط به وضعیت پرداخت‌ها
 def mark_completed_trips():
     pass
 
@@ -114,12 +108,8 @@ def get_receipt_path(path: str) -> str:
     return path
 
 
-# ---------------------------------------------------------------------------
-# احراز هویت (Login / Logout)
-# ---------------------------------------------------------------------------
 @app.post("/login")
 async def login(request: Request, username: str = Form(...), password: str = Form(...)):
-    """Admin login endpoint."""
     if username != ADMIN_USERNAME or not verify_password(password, ADMIN_PASSWORD_HASH):
         raise HTTPException(
             status_code=401,
@@ -132,14 +122,10 @@ async def login(request: Request, username: str = Form(...), password: str = For
 
 @app.post("/logout")
 async def logout(request: Request):
-    """Admin logout endpoint."""
     request.session.pop("admin_authenticated", None)
     return JSONResponse({"success": True})
 
 
-# ---------------------------------------------------------------------------
-# فایل‌های استاتیک / PWA
-# ---------------------------------------------------------------------------
 @app.get("/sw.js")
 def get_sw():
     if os.path.exists("sw.js"):
@@ -172,9 +158,6 @@ def read_root():
     return HTMLResponse("<h1>فایل index.html یافت نشد!</h1>")
 
 
-# ---------------------------------------------------------------------------
-# CRUD تورها
-# ---------------------------------------------------------------------------
 @app.get("/trips", response_model=List[Trip], dependencies=[Depends(verify_admin_session)])
 @app.get("/trips/", response_model=List[Trip], dependencies=[Depends(verify_admin_session)])
 def get_trips():
@@ -227,9 +210,6 @@ def delete_trip(trip_id: int):
         return {"ok": True}
 
 
-# ---------------------------------------------------------------------------
-# CRUD مسافران
-# ---------------------------------------------------------------------------
 @app.get("/participants", response_model=List[Participant], dependencies=[Depends(verify_admin_session)])
 @app.get("/participants/", response_model=List[Participant], dependencies=[Depends(verify_admin_session)])
 def get_participants():
@@ -237,6 +217,7 @@ def get_participants():
         return session.exec(select(Participant)).all()
 
 
+# ✅ تغییر ۳: بهره‌گیری مستقیم از مقدار ذخیره‌شده paid_amount
 @app.get("/trips/{trip_id}/participants", dependencies=[Depends(verify_admin_session)])
 def get_trip_participants(trip_id: int):
     with Session(engine) as session:
@@ -250,11 +231,7 @@ def get_trip_participants(trip_id: int):
 
         result = []
         for participant in participants:
-            confirmed_total = get_confirmed_total(
-                participant.id,
-                trip_id,
-                session,
-            )
+            confirmed_total = participant.paid_amount or 0.0
             remaining_amount = max(
                 round(trip.price - confirmed_total, 2),
                 0.0,
@@ -264,12 +241,7 @@ def get_trip_participants(trip_id: int):
                 trip_id,
                 session,
             )
-            fully_paid = is_fully_paid(
-                participant.id,
-                trip_id,
-                trip.price,
-                session,
-            )
+            fully_paid = confirmed_total >= trip.price
 
             if has_pending_flag:
                 status_text = "فیش در انتظار بررسی"
@@ -295,6 +267,7 @@ def get_trip_participants(trip_id: int):
         return result
 
 
+# ✅ تغییر ۴: محاسبه مجموع دریافتی‌ها بر اساس paid_amount
 @app.get("/trips/{trip_id}/total_received", dependencies=[Depends(verify_admin_session)])
 def get_trip_total_received(trip_id: int):
     with Session(engine) as session:
@@ -306,14 +279,7 @@ def get_trip_total_received(trip_id: int):
             select(Participant).where(Participant.trip_id == trip_id)
         ).all()
 
-        total_received = 0.0
-        for participant in participants:
-            confirmed_total = get_confirmed_total(
-                participant.id,
-                trip_id,
-                session,
-            )
-            total_received += confirmed_total
+        total_received = sum(participant.paid_amount or 0.0 for participant in participants)
 
         return {
             "trip_id": trip_id,
@@ -378,9 +344,6 @@ def delete_participant(participant_id: int):
         return {"ok": True}
 
 
-# ---------------------------------------------------------------------------
-# مدیریت پرداخت‌ها (ادمین)
-# ---------------------------------------------------------------------------
 VALID_PAYMENT_STATUSES = {"pending_review", "confirmed", "rejected"}
 
 
@@ -429,6 +392,7 @@ def get_payments(status: Optional[str] = None):
         return result
 
 
+# ✅ تغییر ۱: به‌روزرسانی participant.paid_amount و status هنگام تأیید پرداخت + ارسال پیام تلگرام
 @app.post("/payments/{payment_id}/confirm", dependencies=[Depends(verify_admin_session)])
 async def confirm_payment(payment_id: int):
     with Session(engine) as session:
@@ -439,6 +403,20 @@ async def confirm_payment(payment_id: int):
         if payment.status != "pending_review":
             raise HTTPException(400, "فقط پرداخت‌های در انتظار بررسی قابل تأیید هستند")
 
+        participant = session.get(Participant, payment.participant_id)
+        if not participant:
+            raise HTTPException(404, "شرکت‌کننده یافت نشد")
+
+        old_amount = participant.paid_amount or 0.0
+        pay_amount = payment.expected_amount or 0.0
+
+        if payment.payment_type == "full":
+            participant.paid_amount = pay_amount
+            participant.payment_status = "پرداخت کامل"
+        elif payment.payment_type == "deposit":
+            participant.paid_amount = old_amount + pay_amount
+            participant.payment_status = "پرداخت بیعانه"
+
         try:
             transition_status(payment, "confirmed")
         except ValueError as e:
@@ -446,8 +424,11 @@ async def confirm_payment(payment_id: int):
 
         payment.reviewed_at = datetime.now().isoformat()
         session.add(payment)
+        session.add(participant)
         session.commit()
         session.refresh(payment)
+
+        logger.info(f"💰 Payment {payment_id} confirmed. Participant paid_amount: {participant.paid_amount}")
 
     if telegram_app is not None and payment.telegram_user_id:
         try:
@@ -486,6 +467,7 @@ async def confirm_payment(payment_id: int):
     return payment
 
 
+# ✅ تغییر ۲: بازگردانی مبلغ participant.paid_amount و بروزرسانی وضعیت هنگام رد پرداخت
 @app.post("/payments/{payment_id}/reject", dependencies=[Depends(verify_admin_session)])
 def reject_payment(payment_id: int):
     with Session(engine) as session:
@@ -495,6 +477,18 @@ def reject_payment(payment_id: int):
 
         if payment.status != "pending_review":
             raise HTTPException(400, "فقط پرداخت‌های در انتظار بررسی قابل رد شدن هستند")
+
+        participant = session.get(Participant, payment.participant_id)
+        if participant:
+            pay_amount = payment.expected_amount or 0.0
+            if payment.payment_type == "full":
+                participant.paid_amount = 0.0
+                participant.payment_status = "پرداخت نشده"
+            elif payment.payment_type == "deposit":
+                participant.paid_amount = max(0.0, (participant.paid_amount or 0.0) - pay_amount)
+                if participant.paid_amount == 0.0:
+                    participant.payment_status = "پرداخت نشده"
+            session.add(participant)
 
         try:
             transition_status(payment, "rejected")
