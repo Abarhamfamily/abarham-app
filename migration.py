@@ -48,6 +48,16 @@ def run_migrations() -> None:
         else:
             print("ℹ️ Migration: available_seats از قبل وجود دارد.")
 
+        # group_id (👈 اضافه شد برای ثبت‌نام و پرداخت یکپارچه گروهی)
+        if "group_id" not in columns:
+            with engine.begin() as connection:
+                connection.execute(
+                    text("ALTER TABLE participant ADD COLUMN group_id VARCHAR")
+                )
+            print("✅ Migration: group_id به جدول participant اضافه شد.")
+        else:
+            print("ℹ️ Migration: group_id از قبل وجود دارد.")
+
     # -----------------------------------------------------------------------
     # جدول trip
     # -----------------------------------------------------------------------

@@ -1,4 +1,6 @@
 import os
+import logging
+import traceback
 from datetime import datetime
 from typing import List, Optional
 from contextlib import asynccontextmanager
@@ -8,19 +10,28 @@ from fastapi import FastAPI, Depends, HTTPException, Request, Form
 from fastapi.responses import JSONResponse, HTMLResponse, FileResponse, Response
 from starlette.middleware.sessions import SessionMiddleware
 from sqlmodel import Session, select, delete
+from telegram import InlineKeyboardMarkup, InlineKeyboardButton
 
 # Import local models, helpers, and migration script
 from models import Trip, Participant, Payment, engine
 from migration import run_migrations
 
+# تنظیمات لاگر
+logger = logging.getLogger(__name__)
+
+# متغیر سراسری ربات تلگرام (اگر در جای دیگر مقداردهی می‌شود)
+telegram_app = None
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # اجرای مایگریشن‌های دیتابیس در زمان استارت‌آپ سرور
+    # اجرای مایگریشن‌های دیتابیس با لاگ‌گیری دقیق در زمان استارت‌آپ
     try:
         run_migrations()
+        print("[MIGRATION SUCCESS] مایگریشن‌ها با موفقیت اجرا شدند.")
     except Exception as e:
-        print(f"Migration error on startup: {e}")
+        print(f"[MIGRATION ERROR] خطا در اجرای مایگریشن استارت‌آپ: {e}")
+        traceback.print_exc()
     yield
 
 
@@ -69,6 +80,40 @@ def verify_admin_session(request: Request):
     return True
 
 
+# توابع کمکی مربوط به وضعیت پرداخت‌ها
+def mark_completed_trips():
+    pass
+
+def get_confirmed_total(participant_id: int, trip_id: int, session: Session) -> float:
+    payments = session.exec(
+        select(Payment).where(
+            Payment.participant_id == participant_id,
+            Payment.trip_id == trip_id,
+            Payment.status == "confirmed"
+        )
+    ).all()
+    return sum(p.expected_amount for p in payments if p.expected_amount)
+
+def has_pending(participant_id: int, trip_id: int, session: Session) -> bool:
+    payment = session.exec(
+        select(Payment).where(
+            Payment.participant_id == participant_id,
+            Payment.trip_id == trip_id,
+            Payment.status == "pending_review"
+        )
+    ).first()
+    return payment is not None
+
+def is_fully_paid(participant_id: int, trip_id: int, trip_price: float, session: Session) -> bool:
+    return get_confirmed_total(participant_id, trip_id, session) >= trip_price
+
+def transition_status(payment: Payment, new_status: str):
+    payment.status = new_status
+
+def get_receipt_path(path: str) -> str:
+    return path
+
+
 # ---------------------------------------------------------------------------
 # احراز هویت (Login / Logout)
 # ---------------------------------------------------------------------------
@@ -90,6 +135,7 @@ async def logout(request: Request):
     """Admin logout endpoint."""
     request.session.pop("admin_authenticated", None)
     return JSONResponse({"success": True})
+
 
 # ---------------------------------------------------------------------------
 # فایل‌های استاتیک / PWA
@@ -139,7 +185,7 @@ def get_trips():
 
 @app.post("/trips", response_model=Trip, dependencies=[Depends(verify_admin_session)])
 @app.post("/trips/", response_model=Trip, dependencies=[Depends(verify_admin_session)])
-def create_trip(trip: Trip, _: bool = Depends(verify_admin_api_key)):
+def create_trip(trip: Trip):
     trip.id = None
     with Session(engine) as session:
         session.add(trip)
@@ -149,7 +195,7 @@ def create_trip(trip: Trip, _: bool = Depends(verify_admin_api_key)):
 
 
 @app.put("/trips/{trip_id}", response_model=Trip, dependencies=[Depends(verify_admin_session)])
-def update_trip(trip_id: int, trip: Trip, _: bool = Depends(verify_admin_api_key)):
+def update_trip(trip_id: int, trip: Trip):
     with Session(engine) as session:
         db_trip = session.get(Trip, trip_id)
         if not db_trip:
@@ -164,7 +210,7 @@ def update_trip(trip_id: int, trip: Trip, _: bool = Depends(verify_admin_api_key
 
 
 @app.delete("/trips/{trip_id}", dependencies=[Depends(verify_admin_session)])
-def delete_trip(trip_id: int, _: bool = Depends(verify_admin_api_key)):
+def delete_trip(trip_id: int):
     with Session(engine) as session:
         db_trip = session.get(Trip, trip_id)
         if not db_trip:
@@ -278,7 +324,7 @@ def get_trip_total_received(trip_id: int):
 
 @app.post("/participants", response_model=Participant, dependencies=[Depends(verify_admin_session)])
 @app.post("/participants/", response_model=Participant, dependencies=[Depends(verify_admin_session)])
-def create_participant(participant: Participant, _: bool = Depends(verify_admin_api_key)):
+def create_participant(participant: Participant):
     participant.id = None
     with Session(engine) as session:
         trip = session.get(Trip, participant.trip_id)
@@ -301,7 +347,7 @@ def create_participant(participant: Participant, _: bool = Depends(verify_admin_
 
 
 @app.put("/participants/{participant_id}", response_model=Participant, dependencies=[Depends(verify_admin_session)])
-def update_participant(participant_id: int, participant: Participant, _: bool = Depends(verify_admin_api_key)):
+def update_participant(participant_id: int, participant: Participant):
     with Session(engine) as session:
         db_participant = session.get(Participant, participant_id)
         if not db_participant:
@@ -316,7 +362,7 @@ def update_participant(participant_id: int, participant: Participant, _: bool = 
 
 
 @app.delete("/participants/{participant_id}", dependencies=[Depends(verify_admin_session)])
-def delete_participant(participant_id: int, _: bool = Depends(verify_admin_api_key)):
+def delete_participant(participant_id: int):
     with Session(engine) as session:
         db_participant = session.get(Participant, participant_id)
         if not db_participant:
@@ -384,7 +430,7 @@ def get_payments(status: Optional[str] = None):
 
 
 @app.post("/payments/{payment_id}/confirm", dependencies=[Depends(verify_admin_session)])
-async def confirm_payment(payment_id: int, _: bool = Depends(verify_admin_api_key)):
+async def confirm_payment(payment_id: int):
     with Session(engine) as session:
         payment = session.get(Payment, payment_id)
         if not payment:
@@ -441,7 +487,7 @@ async def confirm_payment(payment_id: int, _: bool = Depends(verify_admin_api_ke
 
 
 @app.post("/payments/{payment_id}/reject", dependencies=[Depends(verify_admin_session)])
-def reject_payment(payment_id: int, _: bool = Depends(verify_admin_api_key)):
+def reject_payment(payment_id: int):
     with Session(engine) as session:
         payment = session.get(Payment, payment_id)
         if not payment:
