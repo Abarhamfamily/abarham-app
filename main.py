@@ -91,17 +91,6 @@ async def logout(request: Request):
     request.session.pop("admin_authenticated", None)
     return JSONResponse({"success": True})
 
-
-# Include Routers
-from participants.router import router as participants_router
-from trip_info.router import router as trip_info_router
-from wallet.router import router as wallet_router
-
-app.include_router(trip_info_router)
-app.include_router(wallet_router)
-app.include_router(participants_router)
-
-
 # ---------------------------------------------------------------------------
 # فایل‌های استاتیک / PWA
 # ---------------------------------------------------------------------------
