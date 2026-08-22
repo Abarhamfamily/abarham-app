@@ -15,6 +15,7 @@ from telegram import InlineKeyboardMarkup, InlineKeyboardButton
 # Import local models, helpers, and migration script
 from models import Trip, Participant, Payment, engine
 from migration import run_migrations
+from bot import start_bot
 
 # تنظیمات لاگر
 logger = logging.getLogger(__name__)
@@ -25,13 +26,26 @@ telegram_app = None
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    global telegram_app
     try:
         run_migrations()
         print("[MIGRATION SUCCESS] مایگریشن‌ها با موفقیت اجرا شدند.")
     except Exception as e:
         print(f"[MIGRATION ERROR] خطا در اجرای مایگریشن استارت‌آپ: {e}")
         traceback.print_exc()
+    # Start Telegram bot after migrations (whether success or failure)
+    telegram_app = await start_bot()
     yield
+    # Shutdown Telegram bot
+    if telegram_app is not None:
+        try:
+            await telegram_app.updater.stop()
+        except Exception:
+            pass
+        try:
+            await telegram_app.shutdown()
+        except Exception:
+            pass
 
 
 app = FastAPI(lifespan=lifespan)
