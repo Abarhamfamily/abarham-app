@@ -62,12 +62,51 @@ def get_active_trips():
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     welcome_text = (
-        f"سلام {user.first_name} عزیز! 👋\n"
-        "به سیستم ثبت‌نام و مدیریت تورهای **ابرهام** خوش آمدید.\n\n"
-        "جهت ثبت‌نام در تورها از دستور /register و جهت تکمیل پرداخت از /pay استفاده کنید."
+        f"سلام {user.first_name} عزیز! 👋\n\n"
+        "به ابرهام خوش آمدید.\n"
+        "برای شروع، یکی از گزینه‌های زیر را انتخاب کنید:"
     )
-    await update.message.reply_text(welcome_text, parse_mode="Markdown")
+    keyboard = [
+        [InlineKeyboardButton("🌲 ثبت‌نام در تور", callback_data="menu:register")],
+        [InlineKeyboardButton("💳 پرداخت و تکمیل پرداخت", callback_data="menu:pay")],
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.message.reply_text(welcome_text, reply_markup=reply_markup)
 
+async def register_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    context.user_data.clear()
+    trips = get_active_trips()
+    if not trips:
+        await query.edit_message_text("در حال حاضر هیچ تور فعالی برای ثبت‌نام وجود ندارد.")
+        return ConversationHandler.END
+
+    keyboard = []
+    for trip in trips:
+        keyboard.append([InlineKeyboardButton(f"🌲 {trip.title} ({trip.price:,.0f} تومان)", callback_data=f"trip:{trip.id}")])
+
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await query.edit_message_text("لطفاً تور مورد نظر خود را برای ثبت‌نام انتخاب کنید:", reply_markup=reply_markup)
+    return TRIP_SELECT
+
+
+async def pay_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    context.user_data.clear()
+    trips = get_active_trips()
+    if not trips:
+        await query.edit_message_text("در حال حاضر هیچ تور فعال برای پرداخت وجود ندارد.")
+        return ConversationHandler.END
+
+    keyboard = []
+    for trip in trips:
+        keyboard.append([InlineKeyboardButton(f"🌲 {trip.title}", callback_data=f"paytrip:{trip.id}")])
+
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await query.edit_message_text("لطفاً تور مورد نظر خود را برای پرداخت انتخاب کنید:", reply_markup=reply_markup)
+    return PAY_TRIP_SELECT
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.clear()
     await update.message.reply_text(
@@ -392,7 +431,7 @@ def build_bot_app() -> Application:
     app = Application.builder().token(bot_token).build()
 
     reg_handler = ConversationHandler(
-        entry_points=[CommandHandler("register", start_registration)],
+        entry_points=[CommandHandler("register", start_registration), CallbackQueryHandler(register_menu_callback, pattern="^menu:register$")],
         states={
             TRIP_SELECT: [CallbackQueryHandler(trip_selected, pattern="^trip:")],
             NUM_PARTICIPANTS: [CallbackQueryHandler(num_participants_selected, pattern="^num:")],
@@ -408,7 +447,7 @@ def build_bot_app() -> Application:
     )
 
     pay_handler = ConversationHandler(
-        entry_points=[CommandHandler("pay", start_pay)],
+        entry_points=[CommandHandler("pay", start_pay), CallbackQueryHandler(pay_menu_callback, pattern="^menu:pay$")],
         states={
             PAY_TRIP_SELECT: [CallbackQueryHandler(pay_trip_selected, pattern="^paytrip:")],
             PAY_RECEIPT_ONLY: [MessageHandler(filters.PHOTO, receipt_received)],
