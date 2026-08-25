@@ -1,10 +1,11 @@
-from fastapi import FastAPI, Request
+﻿from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from .core.config import settings
 from .core.exceptions import AppError
 from .api.v1 import auth, trips, registrations, payments, wallet, notifications
+from .api.v1.admin import router as admin_router
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -35,6 +36,7 @@ app.include_router(registrations.router, prefix="/api/v1/registrations", tags=["
 app.include_router(payments.router, prefix="/api/v1/payments", tags=["payments"])
 app.include_router(wallet.router, prefix="/api/v1/wallet", tags=["wallet"])
 app.include_router(notifications.router, prefix="/api/v1/notifications", tags=["notifications"])
+app.include_router(admin_router, prefix="/api/v1/admin", tags=["admin"])
 
 
 @app.get("/")
@@ -45,3 +47,5 @@ async def root():
 @app.get("/health")
 async def health():
     return {"status": "healthy"}
+
+
