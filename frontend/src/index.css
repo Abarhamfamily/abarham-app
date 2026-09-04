@@ -1,0 +1,137 @@
+@import "tailwindcss";
+
+/* Abraham design system */
+:root {
+  --radius: 1.25rem;
+  --background: oklch(0.975 0.012 95);
+  --foreground: oklch(0.26 0.03 152);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.26 0.03 152);
+  --primary: oklch(0.52 0.118 152);
+  --primary-foreground: oklch(0.985 0.012 95);
+  --secondary: oklch(0.94 0.02 110);
+  --secondary-foreground: oklch(0.34 0.04 152);
+  --muted: oklch(0.93 0.016 105);
+  --muted-foreground: oklch(0.52 0.035 145);
+  --accent: oklch(0.9 0.05 130);
+  --accent-foreground: oklch(0.32 0.05 152);
+  --amber: oklch(0.7 0.165 62);
+  --amber-foreground: oklch(0.99 0.01 95);
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.985 0.012 95);
+  --border: oklch(0.91 0.014 105);
+  --input: oklch(0.91 0.014 105);
+  --ring: oklch(0.52 0.118 152);
+  --surface-elevated: oklch(0.995 0.008 95);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  direction: rtl;
+  font-family: "Vazirmatn", ui-sans-serif, system-ui, sans-serif;
+  background-color: var(--background);
+  color: var(--foreground);
+  font-feature-settings: "ss01";
+}
+
+/* Utilities */
+.container {
+  width: 100%;
+  max-width: 420px; /* mobile width */
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+@media (min-width: 640px) {
+  .container {
+    max-width: 420px; /* keep narrow */
+    padding: 0 1rem;
+  }
+}
+
+/* Button */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  border-radius: var(--radius);
+  cursor: pointer;
+  text-decoration: none;
+  border: none;
+  transition: transform 0.1s ease;
+}
+.btn:active {
+  transform: scale(0.95);
+}
+.btn-primary {
+  background-color: var(--amber);
+  color: var(--amber-foreground);
+}
+.btn-secondary {
+  background-color: var(--card);
+  color: var(--foreground);
+  border: 1px solid var(--border);
+}
+.btn-outline {
+  background: transparent;
+  color: var(--primary);
+  border: 1px solid var(--primary);
+}
+
+/* Card */
+.card {
+  background: var(--card);
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+/* Avatar */
+.avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  background: linear-gradient(to bottom right, var(--primary), var(--accent));
+  color: var(--primary-foreground);
+  font-weight: bold;
+  border-radius: 9999px;
+  font-size: 1.25rem;
+}
+
+/* Badge */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 0.375rem;
+  padding: 0.25rem 0.5rem;
+}
+.badge-primary { background: var(--primary)/10; color: var(--primary); }
+.badge-amber { background: var(--amber)/15; color: var(--amber); }
+.badge-destructive { background: var(--destructive)/10; color: var(--destructive); }
+
+/* Scrollbar hide */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Text balance */
+.text-balance {
+  text-wrap: balance;
+}
