@@ -41,3 +41,7 @@ htmlcov/
 # Uploads
 backend/uploads/*
 !backend/uploads/.gitkeep
+
+my-little-app-lovable-backup/
+
+my-little-app-lovable-backup/
