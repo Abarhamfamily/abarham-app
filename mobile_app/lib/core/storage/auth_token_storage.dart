@@ -24,4 +24,7 @@ class AuthTokenStorage {
     await _storage.delete(key: _accessTokenKey);
     await _storage.delete(key: _refreshTokenKey);
   }
+   Future<void> updateAccessToken({required String accessToken}) async {
+     await _storage.write(key: _accessTokenKey, value: accessToken);
+   }
 }

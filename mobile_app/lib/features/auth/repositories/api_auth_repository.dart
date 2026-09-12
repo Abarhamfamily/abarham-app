@@ -5,16 +5,20 @@ import '../models/user.dart';
 import '../../../core/constants/api_constants.dart';
 import '../repositories/auth_repository.dart';
 import '../../../core/storage/auth_token_storage.dart';
+import '../../../core/network/api_client.dart';
 
 class ApiAuthRepository implements AuthRepository {
+  final ApiClient _apiClient;
   final AuthTokenStorage _tokenStorage;
   final http.Client _client;
 
   ApiAuthRepository({
     AuthTokenStorage? tokenStorage,
     http.Client? client,
+    ApiClient? apiClient,
   })  : _tokenStorage = tokenStorage ?? AuthTokenStorage(),
-        _client = client ?? http.Client();
+        _client = client ?? http.Client(),
+        _apiClient = apiClient ?? ApiClient();
 
   @override
   Future<TokenResponse> login(String phoneNumber, String password) async {
@@ -60,21 +64,14 @@ class ApiAuthRepository implements AuthRepository {
 
   @override
   Future<void> logout() async {
-    final token = await _tokenStorage.getAccessToken();
-    if (token != null) {
-      try {
-        final logoutUrl = Uri.parse('${ApiConstants.baseUrl}/api/v1/auth/logout');
-        await _client.post(
-          logoutUrl,
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer $token',
-          },
-          body: jsonEncode(<String, dynamic>{}),
-        );
-      } catch (_) {
-        // Logout is best-effort: ignore HTTP/network errors.
-      }
+    try {
+      final logoutUrl = Uri.parse('${ApiConstants.baseUrl}/api/v1/auth/logout');
+      await _apiClient.authenticatedPost(
+        logoutUrl,
+        body: jsonEncode(<String, dynamic>{}),
+      );
+    } catch (_) {
+      // Logout is best-effort: ignore HTTP/network errors.
     }
     await _tokenStorage.clearTokens();
   }
