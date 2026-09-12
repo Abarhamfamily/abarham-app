@@ -37,3 +37,29 @@ class Registration:
     notes: Optional[str] = None
     confirmed_at: Optional[datetime] = None
     cancelled_at: Optional[datetime] = None
+
+
+def calculate_registration_price(
+    trip_price: Decimal,
+    other_vehicle_price: Decimal | None,
+    vehicle_type: str | None,
+    passenger_count: int,
+) -> Decimal:
+    """
+    محاسبه‌ی قیمت کل ثبت‌نام بر اساس قیمت پایه‌ی تور، نوع وسیله نقلیه و تعداد مسافران.
+
+    Raises:
+        ValueError: اگر vehicle_type == 'other' باشد اما other_vehicle_price تعریف نشده باشد,
+                    یا اگر passenger_count <= 0 باشد.
+    """
+    if passenger_count <= 0:
+        raise ValueError("تعداد مسافران باید بزرگ‌تر از صفر باشد")
+
+    if vehicle_type == "own":
+        per_passenger = trip_price
+    else:
+        if other_vehicle_price is None:
+            raise ValueError("هزینه‌ی ماشین سایر اعضا برای این تور تعریف نشده است")
+        per_passenger = trip_price + other_vehicle_price
+
+    return per_passenger * passenger_count
