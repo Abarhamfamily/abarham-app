@@ -15,6 +15,7 @@ class AdminTripOut(BaseModel):
     end_date: datetime
     price: Decimal
     deposit_amount: Decimal
+    other_vehicle_price: Optional[Decimal] = None
     capacity: int
     remaining_capacity: int
     version: int
@@ -52,6 +53,7 @@ class AdminTripCreateRequest(BaseModel):
     end_date: datetime
     price: Decimal
     deposit_amount: Decimal
+    other_vehicle_price: Optional[Decimal] = None
     capacity: int
     status: str = "draft"
     description: Optional[str] = None
@@ -74,6 +76,7 @@ class AdminTripUpdateRequest(BaseModel):
     end_date: Optional[datetime] = None
     price: Optional[Decimal] = None
     deposit_amount: Optional[Decimal] = None
+    other_vehicle_price: Optional[Decimal] = None
     capacity: Optional[int] = None
     status: Optional[str] = None
     transportation_type: Optional[str] = None

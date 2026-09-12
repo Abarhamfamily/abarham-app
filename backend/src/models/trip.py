@@ -25,8 +25,8 @@ class Trip(Base, UuidPkMixin, TimestampMixin):
         CheckConstraint("deposit_amount >= 0", name="ck_trips_deposit_non_negative"),
         CheckConstraint("capacity > 0", name="ck_trips_capacity_positive"),
         CheckConstraint(
-            "remaining_capacity >= 0 AND remaining_capacity <= capacity",
-            name="ck_trips_remaining_capacity_bounds",
+            "other_vehicle_price IS NULL OR other_vehicle_price >= 0",
+            name="ck_trips_other_vehicle_price_non_negative",
         ),
     )
 
@@ -37,6 +37,7 @@ class Trip(Base, UuidPkMixin, TimestampMixin):
     end_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     price: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     deposit_amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    other_vehicle_price: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2), nullable=True)
     capacity: Mapped[int] = mapped_column(Integer, nullable=False)
     remaining_capacity: Mapped[int] = mapped_column(Integer, nullable=False)
     version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)  # optimistic locking

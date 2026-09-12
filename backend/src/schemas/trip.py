@@ -15,6 +15,7 @@ class TripOut(BaseModel):
     end_date: datetime
     price: Decimal
     deposit_amount: Decimal
+    other_vehicle_price: Optional[Decimal] = None
     capacity: int
     remaining_capacity: int
     status: str
