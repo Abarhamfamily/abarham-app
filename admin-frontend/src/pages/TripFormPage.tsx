@@ -10,6 +10,7 @@ const emptyForm: TripFormValues = {
   end_date: '',
   price: '',
   deposit_amount: '',
+  other_vehicle_price: '',
   capacity: 10,
   status: 'draft',
   transportation_type: '',
@@ -54,6 +55,7 @@ export default function TripFormPage() {
         accommodation_info: trip.accommodation_info || '',
         meeting_point: trip.meeting_point || '',
         departure_time: trip.departure_time || '',
+        other_vehicle_price: trip.other_vehicle_price != null ? String(trip.other_vehicle_price) : '',
         cancellation_policy: trip.cancellation_policy || '',
       })
       setLoading(false)

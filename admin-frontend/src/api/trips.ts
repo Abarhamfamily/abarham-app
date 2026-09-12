@@ -9,6 +9,7 @@ export interface TripFormValues {
   end_date: string
   price: string
   deposit_amount: string
+other_vehicle_price?: string,
   capacity: number
   status: string
   transportation_type?: string

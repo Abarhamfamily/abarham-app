@@ -65,6 +65,7 @@ export interface AdminTrip {
   start_date: string
   end_date: string
   price: string
+   other_vehicle_price?: string | null,
   deposit_amount: string
   capacity: number
   remaining_capacity: number
