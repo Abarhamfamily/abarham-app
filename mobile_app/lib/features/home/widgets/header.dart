@@ -1,6 +1,10 @@
 part of '../pages/home_page.dart';
 
 class _Header extends StatelessWidget {
+  final VoidCallback? onLogout;
+
+  const _Header({this.onLogout});
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -62,6 +66,10 @@ class _Header extends StatelessWidget {
                 ),
               ],
             ),
+          ),
+          IconButton(
+            onPressed: onLogout,
+            icon: const Icon(Icons.logout_rounded, size: 24),
           ),
           Stack(
             children: [

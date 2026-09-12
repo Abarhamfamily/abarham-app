@@ -7,6 +7,8 @@ import '../repositories/api_trip_repository.dart';
 import '../repositories/trip_repository.dart';
 import '../../trips/pages/trip_details_page.dart';
 import '../../trips/pages/trips_page.dart';
+import '../../auth/repositories/api_auth_repository.dart';
+import '../../auth/pages/login_page.dart';
 
 part '../widgets/header.dart';
 part '../widgets/small_button.dart';
@@ -88,7 +90,17 @@ class _HomePageState extends State<HomePage> {
           child: CustomScrollView(
             slivers: [
               SliverToBoxAdapter(
-                child: _Header(),
+                child: _Header(
+                  onLogout: () async {
+                    await ApiAuthRepository().logout();
+                    if (context.mounted) {
+                      Navigator.of(context).pushAndRemoveUntil(
+                        AppRouter.route(builder: (_) => LoginPage()),
+                        (route) => false,
+                      );
+                    }
+                  },
+                ),
               ),
               SliverPadding(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),

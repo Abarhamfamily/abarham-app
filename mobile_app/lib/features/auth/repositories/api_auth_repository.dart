@@ -57,4 +57,25 @@ class ApiAuthRepository implements AuthRepository {
         throw Exception('خطا در ارتباط با سرور');
     }
   }
+
+  @override
+  Future<void> logout() async {
+    final token = await _tokenStorage.getAccessToken();
+    if (token != null) {
+      try {
+        final logoutUrl = Uri.parse('${ApiConstants.baseUrl}/api/v1/auth/logout');
+        await _client.post(
+          logoutUrl,
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+          body: jsonEncode(<String, dynamic>{}),
+        );
+      } catch (_) {
+        // Logout is best-effort: ignore HTTP/network errors.
+      }
+    }
+    await _tokenStorage.clearTokens();
+  }
 }
