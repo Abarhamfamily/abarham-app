@@ -5,6 +5,8 @@ from uuid import UUID
 
 from pydantic import BaseModel
 
+from .waitlist import WaitlistOut
+
 
 class RegistrationCreateRequest(BaseModel):
     trip_id: UUID
@@ -44,8 +46,9 @@ class PaymentOut(BaseModel):
 
 
 class RegistrationCreateResponse(BaseModel):
-    registration: RegistrationOut
-    payment: PaymentOut
+    registration: Optional[RegistrationOut] = None
+    payment: Optional[PaymentOut] = None
+    waitlist_entry: Optional[WaitlistOut] = None
     message: str
 
 
