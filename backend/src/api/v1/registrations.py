@@ -4,7 +4,7 @@ from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ...core.database import get_db
@@ -134,7 +134,9 @@ async def create_registration(
             )
             if existing_waitlist.scalar_one_or_none() is not None:
                 await db.execute(
-                    Wallet.__table__.update().where(Wallet.user_id == current_user.id).values(balance=Wallet.balance + trip.deposit_amount, version=Wallet.version + 1)
+                    update(Wallet).where(Wallet.user_id == current_user.id).values(
+                        balance=Wallet.balance + trip.deposit_amount, version=Wallet.version + 1
+                    )
                 )
                 await db.commit()
                 raise HTTPException(
@@ -155,7 +157,9 @@ async def create_registration(
             db.add(waitlist_entry)
 
             await db.execute(
-                Wallet.__table__.update().where(Wallet.user_id == current_user.id).values(balance=Wallet.balance + trip.deposit_amount, version=Wallet.version + 1)
+                update(Wallet).where(Wallet.user_id == current_user.id).values(
+                    balance=Wallet.balance + trip.deposit_amount, version=Wallet.version + 1
+                )
             )
 
             await db.commit()
