@@ -20,26 +20,6 @@ class ApiTripRepository implements TripRepository {
     final body = jsonDecode(response.body) as Map<String, dynamic>;
     final data = body['data'] as List<dynamic>;
 
-    return data.map((item) {
-      final trip = item as Map<String, dynamic>;
-
-      return Trip(
-        id: trip['id'] as String,
-        title: trip['title'] as String,
-        destination: trip['destination'] as String,
-        description: trip['description'] as String?,
-        startDate: DateTime.parse(trip['start_date'] as String),
-        endDate: DateTime.parse(trip['end_date'] as String),
-        price: trip['price'].toString(),
-        depositAmount: trip['deposit_amount'].toString(),
-        capacity: (trip['capacity'] as num).toInt(),
-        remainingCapacity: (trip['remaining_capacity'] as num).toInt(),
-        status: trip['status'] as String,
-        transportationType: trip['transportation_type'] as String?,
-        difficultyLevel: trip['difficulty_level'] as String?,
-        meetingPoint: trip['meeting_point'] as String?,
-        departureTime: trip['departure_time'] as String?,
-      );
-    }).toList();
+    return data.map((item) => Trip.fromJson(item as Map<String, dynamic>)).toList();
   }
 }
