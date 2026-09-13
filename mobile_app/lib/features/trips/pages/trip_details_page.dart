@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../home/models/trip.dart';
+import '../../registrations/repositories/api_registration_repository.dart';
 
-class TripDetailsPage extends StatelessWidget {
+class TripDetailsPage extends StatefulWidget {
   final Trip trip;
 
   const TripDetailsPage({
@@ -11,8 +12,54 @@ class TripDetailsPage extends StatelessWidget {
     required this.trip,
   });
 
+  @override
+  State<TripDetailsPage> createState() => _TripDetailsPageState();
+}
+
+class _TripDetailsPageState extends State<TripDetailsPage> {
+  bool _isRegistering = false;
+
+  Trip get trip => widget.trip;
+
   bool get _hasDescription =>
       trip.description != null && trip.description!.trim().isNotEmpty;
+
+  Future<void> _handleRegisterPressed() async {
+    final vehicleType = await showDialog<String>(
+      context: context,
+      builder: (context) => _VehicleTypeDialog(),
+    );
+
+    if (vehicleType == null) return;
+    if (!mounted) return;
+
+    setState(() => _isRegistering = true);
+
+    final repository = ApiRegistrationRepository();
+    try {
+      final result = await repository.createRegistration(
+        tripId: trip.id,
+        passengerCount: 1,
+        vehicleType: vehicleType,
+      );
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(result.message)),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      final message = e.toString().replaceFirst('Exception: ', '');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isRegistering = false);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -34,10 +81,39 @@ class TripDetailsPage extends StatelessWidget {
                 const SizedBox(height: 16),
                 _buildDescriptionCard(),
               ],
+              const SizedBox(height: 16),
+              _buildRegisterButton(),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildRegisterButton() {
+    return ElevatedButton(
+      onPressed: _isRegistering ? null : _handleRegisterPressed,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+      child: _isRegistering
+          ? const SizedBox(
+              height: 20,
+              width: 20,
+              child: CircularProgressIndicator(
+                color: Colors.white,
+                strokeWidth: 2,
+              ),
+            )
+          : const Text(
+              'ثبت‌نام در این تور',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+            ),
     );
   }
 
@@ -114,7 +190,7 @@ class TripDetailsPage extends StatelessWidget {
     );
   }
 
-Widget _buildInfoCard() {
+  Widget _buildInfoCard() {
     final rows = <_InfoRow>[
       _InfoRow(label: 'تاریخ شروع', value: _formatDate(trip.startDate)),
       _InfoRow(label: 'تاریخ پایان', value: _formatDate(trip.endDate)),
@@ -183,6 +259,49 @@ Widget _buildInfoCard() {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _VehicleTypeDialog extends StatefulWidget {
+  @override
+  State<_VehicleTypeDialog> createState() => _VehicleTypeDialogState();
+}
+
+class _VehicleTypeDialogState extends State<_VehicleTypeDialog> {
+  String _selected = 'own';
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('نوع وسیله نقلیه'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          RadioListTile<String>(
+            title: const Text('با ماشین شخصی خودم'),
+            value: 'own',
+            groupValue: _selected,
+            onChanged: (value) => setState(() => _selected = value!),
+          ),
+          RadioListTile<String>(
+            title: const Text('با ماشین سایر اعضا'),
+            value: 'other',
+            groupValue: _selected,
+            onChanged: (value) => setState(() => _selected = value!),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('انصراف'),
+        ),
+        ElevatedButton(
+          onPressed: () => Navigator.of(context).pop(_selected),
+          child: const Text('ثبت‌نام'),
+        ),
+      ],
     );
   }
 }
