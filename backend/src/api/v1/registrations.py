@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+from decimal import Decimal
 from typing import Optional
 from uuid import UUID
 
@@ -7,13 +9,22 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ...core.database import get_db
 from ...core.deps import get_current_user
+from ...domain.registrations import calculate_registration_price
+from ...models.trip import Trip
 from ...models.user import User
-from ...models.registration import Registration
+from ...models.registration import Registration, RegistrationStatus
+from ...models.waitlist import Waitlist, WaitlistStatus
+from ...models.wallet import Wallet
 from ...schemas.registration import (
     RegistrationCreateRequest,
     RegistrationCreateResponse,
     RegistrationOut,
+    PaymentOut,
 )
+from ...schemas.waitlist import WaitlistOut
+from ...services.trip_capacity import try_decrement_trip_capacity
+from ...services.wallet_balance import try_decrement_wallet_balance
+from ...services.payment_idempotency import get_or_create_deposit_payment
 
 router = APIRouter()
 
@@ -24,17 +35,148 @@ async def create_registration(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    # TODO (Phase 4): پیاده‌سازی RegistrationService طبق Section H/Section N:
-    #   1. جلوگیری از ثبت‌نام تکراری (UNIQUE constraint موجود است، اما پیام
-    #      خطای مناسب باید در سرویس مدیریت شود).
-    #   2. قفل خوش‌بینانه (optimistic locking) روی Trip.version برای جلوگیری
-    #      از overbooking در شرایط همزمانی بالا.
-    #   3. اگر ظرفیت پر بود، افزودن به Waitlist به‌جای خطا.
-    #   4. ساخت رکورد Payment بیعانه (deposit) هم‌زمان با ثبت‌نام.
-    raise HTTPException(
-        status.HTTP_501_NOT_IMPLEMENTED,
-        "Registration creation not implemented yet — Phase 4",
-    )
+    # مرحله ۱ - پیدا کردن تور
+    trip = await db.get(Trip, payload.trip_id)
+    if not trip:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "تور یافت نشد")
+
+    try:
+        # مرحله ۲ - جلوگیری از ثبت‌نام تکراری
+        existing_registration = await db.execute(
+            select(Registration).where(
+                Registration.user_id == current_user.id,
+                Registration.trip_id == trip.id,
+            )
+        )
+        if existing_registration.scalar_one_or_none() is not None:
+            raise HTTPException(
+                status.HTTP_409_CONFLICT, "شما قبلاً برای این تور ثبت‌نام کرده‌اید"
+            )
+
+        # مرحله ۳ - محاسبه قیمت
+        try:
+            calculated_price = calculate_registration_price(
+                trip_price=trip.price,
+                other_vehicle_price=trip.other_vehicle_price,
+                vehicle_type=payload.vehicle_type,
+                passenger_count=payload.passenger_count,
+            )
+        except ValueError as e:
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(e))
+
+        # مرحله ۴ - بررسی و کاهش موجودی کیف پول
+        wallet_result = await db.execute(
+            select(Wallet).where(Wallet.user_id == current_user.id)
+        )
+        wallet = wallet_result.scalar_one_or_none()
+        if not wallet:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "کیف پول یافت نشد")
+
+        wallet_decremented = await try_decrement_wallet_balance(
+            db=db,
+            user_id=current_user.id,
+            current_version=wallet.version,
+            amount=trip.deposit_amount,
+        )
+        if not wallet_decremented:
+            raise HTTPException(
+                status.HTTP_402_PAYMENT_REQUIRED, "موجودی کیف پول کافی نیست"
+            )
+
+        # مرحله ۵ - تلاش برای کاهش ظرفیت تور
+        capacity_decremented = await try_decrement_trip_capacity(
+            db=db,
+            trip_id=trip.id,
+            current_version=trip.version,
+            passenger_count=payload.passenger_count,
+        )
+
+        if capacity_decremented:
+            registration = Registration(
+                user_id=current_user.id,
+                trip_id=trip.id,
+                status=RegistrationStatus.PENDING_PAYMENT.value,
+                total_price=calculated_price,
+                deposit_paid=Decimal("0"),
+                remaining_amount=calculated_price,
+                passenger_count=payload.passenger_count,
+                vehicle_type=payload.vehicle_type,
+                empty_seats_provided=payload.empty_seats_provided or 0,
+                notes=payload.notes,
+                registered_at=datetime.now(timezone.utc),
+            )
+            db.add(registration)
+            await db.flush()
+
+            payment, _ = await get_or_create_deposit_payment(
+                db=db,
+                registration_id=registration.id,
+                user_id=current_user.id,
+                amount=trip.deposit_amount,
+            )
+
+            await db.commit()
+            await db.refresh(registration)
+            await db.refresh(payment)
+
+            return RegistrationCreateResponse(
+                registration=RegistrationOut.model_validate(registration),
+                payment=PaymentOut.model_validate(payment),
+                waitlist_entry=None,
+                message="ثبت‌نام با موفقیت انجام شد",
+            )
+        else:
+            existing_waitlist = await db.execute(
+                select(Waitlist).where(
+                    Waitlist.user_id == current_user.id,
+                    Waitlist.trip_id == trip.id,
+                )
+            )
+            if existing_waitlist.scalar_one_or_none() is not None:
+                await db.execute(
+                    Wallet.__table__.update().where(Wallet.user_id == current_user.id).values(balance=Wallet.balance + trip.deposit_amount, version=Wallet.version + 1)
+                )
+                await db.commit()
+                raise HTTPException(
+                    status.HTTP_409_CONFLICT, "شما قبلاً در لیست انتظار این تور هستید"
+                )
+
+            waitlist_count_result = await db.execute(
+                select(Waitlist).where(Waitlist.trip_id == trip.id)
+            )
+            position = len(waitlist_count_result.scalars().all()) + 1
+
+            waitlist_entry = Waitlist(
+                user_id=current_user.id,
+                trip_id=trip.id,
+                position=position,
+                status=WaitlistStatus.WAITING.value,
+            )
+            db.add(waitlist_entry)
+
+            await db.execute(
+                Wallet.__table__.update().where(Wallet.user_id == current_user.id).values(balance=Wallet.balance + trip.deposit_amount, version=Wallet.version + 1)
+            )
+
+            await db.commit()
+            await db.refresh(waitlist_entry)
+
+            return RegistrationCreateResponse(
+                registration=None,
+                payment=None,
+                waitlist_entry=WaitlistOut.model_validate(waitlist_entry),
+                message="ظرفیت تور تکمیل است؛ شما به لیست انتظار اضافه شدید",
+            )
+
+    except HTTPException:
+        await db.rollback()
+        raise
+    except Exception:
+        await db.rollback()
+        raise HTTPException(
+            status.HTTP_500_INTERNAL_SERVER_ERROR,
+            "خطای داخلی سرور در پردازش ثبت‌نام",
+        )
 
 
 @router.get("/my", response_model=list[RegistrationOut])
