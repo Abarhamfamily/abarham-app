@@ -1,4 +1,5 @@
 import '../models/registration_create_response.dart';
+import '../models/registration_with_trip.dart';
 
 abstract class RegistrationRepository {
   Future<RegistrationCreateResponse> createRegistration({
@@ -8,4 +9,6 @@ abstract class RegistrationRepository {
     int emptySeatsProvided,
     String? notes,
   });
+
+  Future<List<RegistrationWithTrip>> getMyRegistrations();
 }

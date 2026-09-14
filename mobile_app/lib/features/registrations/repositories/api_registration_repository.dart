@@ -2,6 +2,7 @@ import 'dart:convert';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/network/api_client.dart';
 import '../models/registration_create_response.dart';
+import '../models/registration_with_trip.dart';
 import 'registration_repository.dart';
 
 class ApiRegistrationRepository implements RegistrationRepository {
@@ -52,5 +53,20 @@ class ApiRegistrationRepository implements RegistrationRepository {
       default:
         throw Exception('خطا در ارتباط با سرور');
     }
+  }
+
+  @override
+  Future<List<RegistrationWithTrip>> getMyRegistrations() async {
+    final url = Uri.parse('${ApiConstants.baseUrl}/api/v1/registrations/my');
+    final response = await _apiClient.authenticatedGet(url);
+
+    if (response.statusCode != 200) {
+      throw Exception('خطا در دریافت سفرهای من');
+    }
+
+    final data = jsonDecode(response.body) as List<dynamic>;
+    return data
+        .map((item) => RegistrationWithTrip.fromJson(item as Map<String, dynamic>))
+        .toList();
   }
 }
