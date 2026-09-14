@@ -35,6 +35,20 @@ class RegistrationOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class RegistrationWithTripOut(BaseModel):
+    id: UUID
+    trip_id: UUID
+    trip_title: str
+    trip_destination: str
+    status: str
+    total_price: Decimal
+    deposit_paid: Decimal
+    remaining_amount: Decimal
+    passenger_count: int
+    vehicle_type: Optional[str] = None
+    registered_at: datetime
+
+
 class PaymentOut(BaseModel):
     id: UUID
     registration_id: UUID

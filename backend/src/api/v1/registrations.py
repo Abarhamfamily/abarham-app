@@ -19,6 +19,7 @@ from ...schemas.registration import (
     RegistrationCreateRequest,
     RegistrationCreateResponse,
     RegistrationOut,
+    RegistrationWithTripOut,
     PaymentOut,
 )
 from ...schemas.waitlist import WaitlistOut
@@ -183,19 +184,39 @@ async def create_registration(
         )
 
 
-@router.get("/my", response_model=list[RegistrationOut])
+@router.get("/my", response_model=list[RegistrationWithTripOut])
 async def list_my_registrations(
     status_filter: Optional[str] = Query(None, alias="status"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    query = select(Registration).where(Registration.user_id == current_user.id)
+    query = (
+        select(Registration, Trip.title, Trip.destination)
+        .join(Trip, Registration.trip_id == Trip.id)
+        .where(Registration.user_id == current_user.id)
+    )
     if status_filter:
         query = query.where(Registration.status == status_filter)
 
     result = await db.execute(query.order_by(Registration.registered_at.desc()))
-    registrations = result.scalars().all()
-    return [RegistrationOut.model_validate(r) for r in registrations]
+    rows = result.all()
+
+    return [
+        RegistrationWithTripOut(
+            id=reg.id,
+            trip_id=reg.trip_id,
+            trip_title=trip_title,
+            trip_destination=trip_destination,
+            status=reg.status,
+            total_price=reg.total_price,
+            deposit_paid=reg.deposit_paid,
+            remaining_amount=reg.remaining_amount,
+            passenger_count=reg.passenger_count,
+            vehicle_type=reg.vehicle_type,
+            registered_at=reg.registered_at,
+        )
+        for reg, trip_title, trip_destination in rows
+    ]
 
 
 @router.get("/{registration_id}", response_model=RegistrationOut)
