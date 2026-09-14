@@ -2,8 +2,9 @@ part of '../pages/home_page.dart';
 
 class _Header extends StatelessWidget {
   final VoidCallback? onLogout;
+  final VoidCallback? onMyRegistrations;
 
-  const _Header({this.onLogout});
+  const _Header({this.onLogout, this.onMyRegistrations});
 
   @override
   Widget build(BuildContext context) {
@@ -70,6 +71,10 @@ class _Header extends StatelessWidget {
           IconButton(
             onPressed: onLogout,
             icon: const Icon(Icons.logout_rounded, size: 24),
+          ),
+          IconButton(
+            onPressed: onMyRegistrations,
+            icon: const Icon(Icons.card_travel_rounded, size: 24),
           ),
           Stack(
             children: [

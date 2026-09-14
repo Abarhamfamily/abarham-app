@@ -9,6 +9,7 @@ import '../../trips/pages/trip_details_page.dart';
 import '../../trips/pages/trips_page.dart';
 import '../../auth/repositories/api_auth_repository.dart';
 import '../../auth/pages/login_page.dart';
+import '../../registrations/pages/my_registrations_page.dart';
 
 part '../widgets/header.dart';
 part '../widgets/small_button.dart';
@@ -90,7 +91,7 @@ class _HomePageState extends State<HomePage> {
           child: CustomScrollView(
             slivers: [
               SliverToBoxAdapter(
-                child: _Header(
+                 child: _Header(
                   onLogout: () async {
                     await ApiAuthRepository().logout();
                     if (context.mounted) {
@@ -100,8 +101,13 @@ class _HomePageState extends State<HomePage> {
                       );
                     }
                   },
+                  onMyRegistrations: () {
+                    Navigator.of(context).push(
+                      AppRouter.route(builder: (_) => const MyRegistrationsPage()),
+                    );
+                  },
                 ),
-              ),
+               ),
               SliverPadding(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
                 sliver: SliverList(
