@@ -1,5 +1,6 @@
-from datetime import date
+from datetime import date, datetime, timezone
 from typing import Optional
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
@@ -8,8 +9,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ...core.database import get_db
 from ...core.deps import get_current_user
 from ...models.user import User
+from ...models.wallet import TransactionType, TransactionStatus
 from ...models.wallet import Wallet, Transaction
-from ...schemas.wallet import WalletOut, TransactionOut, WalletDepositRequest, WalletWithdrawRequest
+from ...schemas.wallet import (
+    WalletOut,
+    TransactionOut,
+    WalletDepositRequest,
+    WalletWithdrawRequest,
+    WalletChargeRequest,
+    WalletChargeResponse,
+    WalletChargeVerifyResponse,
+)
+from ...services.payment_gateway import create_payment_request, verify_payment
+from ...services.wallet_balance import try_increment_wallet_balance
 
 router = APIRouter()
 
@@ -86,3 +98,100 @@ async def withdraw(
         status.HTTP_501_NOT_IMPLEMENTED,
         "Wallet withdrawal not implemented yet — Phase 5",
     )
+
+
+@router.post("/charge", response_model=WalletChargeResponse, status_code=status.HTTP_201_CREATED)
+async def charge_wallet(
+    payload: WalletChargeRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(Wallet).where(Wallet.user_id == current_user.id))
+    wallet = result.scalar_one_or_none()
+    if not wallet:
+        wallet = Wallet(user_id=current_user.id)
+        db.add(wallet)
+        await db.flush()
+
+    gateway_info = create_payment_request(
+        amount=payload.amount,
+        description="شارژ کیف پول آبرهام",
+    )
+
+    transaction = Transaction(
+        wallet_id=wallet.id,
+        amount=payload.amount,
+        type=TransactionType.DEPOSIT.value,
+        status=TransactionStatus.PENDING.value,
+        description="شارژ کیف پول (در انتظار تأیید درگاه)",
+        transaction_metadata={"authority": gateway_info["authority"]},
+        created_at=datetime.now(timezone.utc),
+    )
+    db.add(transaction)
+    await db.commit()
+    await db.refresh(transaction)
+
+    return WalletChargeResponse(
+        transaction_id=transaction.id,
+        payment_url=gateway_info["payment_url"],
+        authority=gateway_info["authority"],
+    )
+
+
+@router.post("/charge/{transaction_id}/verify", response_model=WalletChargeVerifyResponse)
+async def verify_wallet_charge(
+    transaction_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    transaction = await db.get(Transaction, transaction_id)
+    if not transaction:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "تراکنش یافت نشد")
+
+    wallet_result = await db.execute(select(Wallet).where(Wallet.user_id == current_user.id))
+    wallet = wallet_result.scalar_one_or_none()
+    if not wallet or transaction.wallet_id != wallet.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "تراکنش یافت نشد")
+
+    if transaction.status != TransactionStatus.PENDING.value:
+        return WalletChargeVerifyResponse(
+            success=transaction.status == TransactionStatus.CONFIRMED.value,
+            message="این تراکنش قبلاً پردازش شده است",
+            wallet=WalletOut.model_validate(wallet),
+        )
+
+    authority = (transaction.transaction_metadata or {}).get("authority", "")
+    is_verified = verify_payment(authority)
+
+    if is_verified:
+        incremented = await try_increment_wallet_balance(
+            db=db,
+            user_id=current_user.id,
+            current_version=wallet.version,
+            amount=transaction.amount,
+        )
+        if not incremented:
+            await db.rollback()
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                "خطا در به‌روزرسانی موجودی، لطفاً دوباره تلاش کنید",
+            )
+        transaction.status = TransactionStatus.CONFIRMED.value
+        transaction.confirmed_at = datetime.now(timezone.utc)
+        await db.commit()
+        await db.refresh(wallet)
+
+        return WalletChargeVerifyResponse(
+            success=True,
+            message="شارژ کیف پول با موفقیت انجام شد",
+            wallet=WalletOut.model_validate(wallet),
+        )
+    else:
+        transaction.status = TransactionStatus.FAILED.value
+        await db.commit()
+
+        return WalletChargeVerifyResponse(
+            success=False,
+            message="پرداخت تأیید نشد",
+            wallet=None,
+        )

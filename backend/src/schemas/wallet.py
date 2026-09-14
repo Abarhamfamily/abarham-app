@@ -38,3 +38,19 @@ class WalletDepositRequest(BaseModel):
 class WalletWithdrawRequest(BaseModel):
     amount: Decimal
     idempotency_key: str
+
+
+class WalletChargeRequest(BaseModel):
+    amount: Decimal
+
+
+class WalletChargeResponse(BaseModel):
+    transaction_id: UUID
+    payment_url: str
+    authority: str
+
+
+class WalletChargeVerifyResponse(BaseModel):
+    success: bool
+    message: str
+    wallet: Optional[WalletOut] = None
