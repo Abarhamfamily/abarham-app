@@ -47,3 +47,20 @@ class AdminTransactionOut(BaseModel):
 class AdminWalletAdjustRequest(BaseModel):
     amount: Decimal  # مثبت = افزایش موجودی، منفی = کاهش موجودی
     description: str
+
+class AdminWithdrawalOut(BaseModel):
+    id: UUID
+    wallet_id: UUID
+    amount: Decimal
+    status: str
+    card_number: Optional[str] = None
+    created_at: datetime
+
+    user_full_name: Optional[str] = None
+    user_phone_number: Optional[str] = None
+
+    model_config = {"from_attributes": True}
+
+
+class AdminWithdrawalRejectRequest(BaseModel):
+    reason: Optional[str] = None

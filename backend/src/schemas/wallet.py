@@ -37,7 +37,7 @@ class WalletDepositRequest(BaseModel):
 
 class WalletWithdrawRequest(BaseModel):
     amount: Decimal
-    idempotency_key: str
+    card_number: str
 
 
 class WalletChargeRequest(BaseModel):
