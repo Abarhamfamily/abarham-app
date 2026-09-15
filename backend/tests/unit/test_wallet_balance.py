@@ -7,7 +7,12 @@ from decimal import Decimal
 
 from src.models.user import User
 from src.models.wallet import Wallet
-from src.services.wallet_balance import try_decrement_wallet_balance, try_increment_wallet_balance
+from src.services.wallet_balance import (
+    try_decrement_wallet_balance,
+    try_increment_wallet_balance,
+    try_reserve_wallet_balance,
+    try_release_wallet_balance,
+)
 
 
 @pytest_asyncio.fixture
@@ -165,8 +170,120 @@ async def test_balance_increment_wrong_version(db_session: AsyncSession, test_wa
 
     # Assert
     assert result is False
+
+
+@pytest.mark.asyncio
+async def test_successful_balance_reserve(
+    db_session: AsyncSession, test_wallet: Wallet
+):
+    """Test successful reserve (balance -> pending_balance) with sufficient balance."""
+    # Arrange
+    initial_balance = test_wallet.balance
+    initial_pending = test_wallet.pending_balance
+    initial_version = test_wallet.version
+    amount = Decimal("30000")
+
+    # Act
+    result = await try_reserve_wallet_balance(
+        db=db_session,
+        user_id=test_wallet.user_id,
+        current_version=initial_version,
+        amount=amount,
+    )
+
+    # Assert
+    assert result is True
     await db_session.commit()
     await db_session.refresh(test_wallet)
+    assert test_wallet.balance == initial_balance - amount
+    assert test_wallet.pending_balance == initial_pending + amount
+    assert test_wallet.version == initial_version + 1
+
+
+@pytest.mark.asyncio
+async def test_balance_reserve_insufficient_balance(
+    db_session: AsyncSession, test_wallet: Wallet
+):
+    """Test reserve failure due to insufficient balance."""
+    # Arrange
+    initial_balance = test_wallet.balance
+    initial_version = test_wallet.version
+    amount = initial_balance + 1  # More than available
+
+    # Act
+    result = await try_reserve_wallet_balance(
+        db=db_session,
+        user_id=test_wallet.user_id,
+        current_version=initial_version,
+        amount=amount,
+    )
+
+    # Assert
+    assert result is False
+    await db_session.refresh(test_wallet)
     assert test_wallet.balance == initial_balance  # No change
-    assert test_wallet.total_deposited == initial_total_deposited  # No change
-    assert test_wallet.version == initial_version  # Version remains unchanged
+    assert test_wallet.pending_balance == Decimal("0")  # No change
+    assert test_wallet.version == initial_version  # No change
+
+
+@pytest.mark.asyncio
+async def test_successful_balance_release(
+    db_session: AsyncSession, test_wallet: Wallet
+):
+    """Test successful release (pending_balance -> balance) for admin rejection."""
+    # First reserve some amount to create a pending balance
+    reserve_amount = Decimal("30000")
+    await try_reserve_wallet_balance(
+        db=db_session,
+        user_id=test_wallet.user_id,
+        current_version=test_wallet.version,
+        amount=reserve_amount,
+    )
+    await db_session.commit()
+    await db_session.refresh(test_wallet)
+
+    initial_balance = test_wallet.balance
+    initial_pending = test_wallet.pending_balance
+    initial_version = test_wallet.version
+
+    # Act - Release the reserved amount
+    result = await try_release_wallet_balance(
+        db=db_session,
+        user_id=test_wallet.user_id,
+        current_version=initial_version,
+        amount=reserve_amount,
+    )
+
+    # Assert
+    assert result is True
+    await db_session.commit()
+    await db_session.refresh(test_wallet)
+    assert test_wallet.balance == initial_balance + reserve_amount
+    assert test_wallet.pending_balance == initial_pending - reserve_amount
+    assert test_wallet.version == initial_version + 1
+
+
+@pytest.mark.asyncio
+async def test_balance_release_insufficient_pending(
+    db_session: AsyncSession, test_wallet: Wallet
+):
+    """Test release failure due to insufficient pending balance."""
+    # Arrange
+    initial_pending = test_wallet.pending_balance
+    initial_version = test_wallet.version
+    amount = initial_pending + 1  # More than pending
+
+    # Act
+    result = await try_release_wallet_balance(
+        db=db_session,
+        user_id=test_wallet.user_id,
+        current_version=initial_version,
+        amount=amount,
+    )
+
+    # Assert
+    assert result is False
+    await db_session.refresh(test_wallet)
+    assert test_wallet.balance == test_wallet.balance  # No change
+    assert test_wallet.pending_balance == initial_pending  # No change
+    assert test_wallet.version == initial_version  # No change
