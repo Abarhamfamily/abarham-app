@@ -10,6 +10,8 @@ import '../../trips/pages/trips_page.dart';
 import '../../auth/repositories/api_auth_repository.dart';
 import '../../auth/pages/login_page.dart';
 import '../../registrations/pages/my_registrations_page.dart';
+import '../../wallet/pages/wallet_page.dart';
+
 
 part '../widgets/header.dart';
 part '../widgets/small_button.dart';

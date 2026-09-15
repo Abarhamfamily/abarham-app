@@ -23,21 +23,26 @@ class _BottomNavigation extends StatelessWidget {
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: const [
-              _NavItem(
+            children: [
+              const _NavItem(
                 icon: Icons.home_rounded,
                 label: 'خانه',
                 active: true,
               ),
-              _NavItem(
+              const _NavItem(
                 icon: Icons.hiking_rounded,
                 label: 'سفرها',
               ),
               _NavItem(
                 icon: Icons.account_balance_wallet_rounded,
                 label: 'کیف سفر',
+                onTap: () {
+                  Navigator.of(context).push(
+                    AppRouter.route(builder: (_) => const WalletPage()),
+                  );
+                },
               ),
-              _NavItem(
+              const _NavItem(
                 icon: Icons.person_rounded,
                 label: 'پروفایل',
               ),
