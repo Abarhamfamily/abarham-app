@@ -83,4 +83,26 @@ class ApiWalletRepository implements WalletRepository {
             data['detail'] as String? ?? 'خطا در تأیید شارژ');
     }
   }
+
+  @override
+  Future<WalletTransaction> requestWithdrawal({
+    required String amount,
+    required String cardNumber,
+  }) async {
+    final url = Uri.parse('${ApiConstants.baseUrl}/api/v1/wallet/withdraw');
+    final response = await _apiClient.authenticatedPost(
+      url,
+      body: jsonEncode({'amount': amount, 'card_number': cardNumber}),
+    );
+
+    switch (response.statusCode) {
+      case 201:
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        return WalletTransaction.fromJson(data);
+      default:
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        throw Exception(
+            data['detail'] as String? ?? 'خطا در ثبت درخواست برداشت');
+    }
+  }
 }

@@ -8,4 +8,8 @@ abstract class WalletRepository {
   Future<List<WalletTransaction>> getTransactions();
   Future<WalletChargeResponse> chargeWallet({required String amount});
   Future<WalletChargeVerifyResponse> verifyCharge({required String transactionId});
+  Future<WalletTransaction> requestWithdrawal({
+    required String amount,
+    required String cardNumber,
+  });
 }
