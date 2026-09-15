@@ -136,3 +136,33 @@ async def test_update_profile_partial_update(client, db_session):
     assert saved_profile.medical_notes == "یادداشت پزشکی قبلی"
     assert saved_profile.vehicle_has_capacity is True
     assert saved_profile.empty_seats == 3
+
+
+@pytest.mark.asyncio
+async def test_upload_profile_image_success(client, db_session):
+    """POST /me/profile_image با تصویر jpeg — 200 و profile_image_url صحیح."""
+    user_id = uuid.uuid4()
+    user = User(
+        id=user_id,
+        phone_number="09123456792",
+        full_name="کاربر تست",
+        is_active=True,
+    )
+    db_session.add(user)
+    await db_session.commit()
+
+    async def override_get_current_user():
+        return user
+
+    app.dependency_overrides[get_current_user] = override_get_current_user
+
+    response = await client.post(
+        "/api/v1/users/me/profile/image",
+        files={"file": ("test.jpg", b"fake image content", "image/jpeg")},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["profile_image_url"] is not None
+    assert "/uploads/profile_images/" in body["profile_image_url"]
+    assert body["emergency_contact_name"] is None  # no profile fields set yet
