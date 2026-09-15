@@ -10,6 +10,7 @@ import TripFormPage from './pages/TripFormPage'
 import RegistrationsPage from './pages/RegistrationsPage'
 import PaymentsPage from './pages/PaymentsPage'
 import WalletPage from './pages/WalletPage'
+import WithdrawalsPage from './pages/WithdrawalsPage'
 import NotificationsPage from './pages/NotificationsPage'
 
 function App() {
@@ -28,6 +29,7 @@ function App() {
           <Route path="/registrations" element={<RegistrationsPage />} />
           <Route path="/payments" element={<PaymentsPage />} />
           <Route path="/wallet" element={<WalletPage />} />
+          <Route path="/withdrawals" element={<WithdrawalsPage />} />
           <Route path="/notifications" element={<NotificationsPage />} />
         </Route>
       </Route>

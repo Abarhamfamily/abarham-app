@@ -153,3 +153,14 @@ export interface AdminNotification {
   sent_at: string
   user_full_name?: string | null
 }
+
+export interface AdminWithdrawal {
+  id: string
+  wallet_id: string
+  amount: string
+  status: string
+  card_number?: string | null
+  created_at: string
+  user_full_name?: string | null
+  user_phone_number?: string | null
+}

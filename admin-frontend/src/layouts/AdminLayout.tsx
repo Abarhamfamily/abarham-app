@@ -9,6 +9,7 @@ const navItems = [
   { to: '/registrations', label: 'ثبت‌نام‌ها' },
   { to: '/payments', label: 'پرداخت‌ها' },
   { to: '/wallet', label: 'کیف پول' },
+  { to: '/withdrawals', label: 'درخواست‌های برداشت' },
   { to: '/notifications', label: 'اعلان‌ها' },
 ]
 
