@@ -17,6 +17,8 @@ from ....schemas.admin_wallet import (
     AdminWalletListMeta,
     AdminTransactionOut,
     AdminWalletAdjustRequest,
+    AdminWithdrawalOut,
+    AdminWithdrawalRejectRequest,
 )
 
 router = APIRouter()
@@ -120,6 +122,102 @@ async def adjust_wallet(
         confirmed_at=datetime.now(timezone.utc),
     )
     db.add(transaction)
+
+    await db.commit()
+    await db.refresh(transaction)
+    return AdminTransactionOut.model_validate(transaction)
+
+
+@router.get("/withdrawals", response_model=list[AdminWithdrawalOut])
+async def list_withdrawals(
+    status_filter: Optional[str] = Query(None, alias="status"),
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    current_admin: Admin = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    query = (
+        select(Transaction, User)
+        .join(Wallet, Transaction.wallet_id == Wallet.id)
+        .join(User, Wallet.user_id == User.id)
+        .where(Transaction.type == TransactionType.WITHDRAWAL.value)
+    )
+    if status_filter:
+        query = query.where(Transaction.status == status_filter)
+    else:
+        query = query.where(Transaction.status == TransactionStatus.PENDING.value)
+
+    result = await db.execute(
+        query.order_by(Transaction.created_at.desc()).limit(limit).offset(offset)
+    )
+    rows = result.all()
+
+    output = []
+    for transaction, user in rows:
+        out = AdminWithdrawalOut.model_validate(transaction)
+        out.card_number = (transaction.transaction_metadata or {}).get("card_number")
+        out.user_full_name = user.full_name
+        out.user_phone_number = user.phone_number
+        output.append(out)
+    return output
+
+
+@router.post("/withdrawals/{transaction_id}/approve", response_model=AdminTransactionOut)
+async def approve_withdrawal(
+    transaction_id: UUID,
+    current_admin: Admin = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    transaction = await db.get(Transaction, transaction_id)
+    if not transaction or transaction.type != TransactionType.WITHDRAWAL.value:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "درخواست برداشت یافت نشد")
+    if transaction.status != TransactionStatus.PENDING.value:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "فقط درخواست‌های در انتظار بررسی قابل تأیید هستند")
+
+    wallet = await db.get(Wallet, transaction.wallet_id)
+    if not wallet:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "کیف پول مرتبط یافت نشد")
+    if wallet.pending_balance < transaction.amount:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "موجودی رزروشده کافی نیست")
+
+    wallet.pending_balance = wallet.pending_balance - transaction.amount
+    wallet.total_withdrawn = wallet.total_withdrawn + transaction.amount
+    wallet.version += 1
+
+    transaction.status = TransactionStatus.CONFIRMED.value
+    transaction.confirmed_at = datetime.now(timezone.utc)
+
+    await db.commit()
+    await db.refresh(transaction)
+    return AdminTransactionOut.model_validate(transaction)
+
+
+@router.post("/withdrawals/{transaction_id}/reject", response_model=AdminTransactionOut)
+async def reject_withdrawal(
+    transaction_id: UUID,
+    payload: AdminWithdrawalRejectRequest,
+    current_admin: Admin = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    transaction = await db.get(Transaction, transaction_id)
+    if not transaction or transaction.type != TransactionType.WITHDRAWAL.value:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "درخواست برداشت یافت نشد")
+    if transaction.status != TransactionStatus.PENDING.value:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "فقط درخواست‌های در انتظار بررسی قابل رد هستند")
+
+    wallet = await db.get(Wallet, transaction.wallet_id)
+    if not wallet:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "کیف پول مرتبط یافت نشد")
+    if wallet.pending_balance < transaction.amount:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "موجودی رزروشده کافی نیست")
+
+    wallet.balance = wallet.balance + transaction.amount
+    wallet.pending_balance = wallet.pending_balance - transaction.amount
+    wallet.version += 1
+
+    transaction.status = TransactionStatus.REVERSED.value
+    if payload.reason:
+        transaction.description = f"{transaction.description} | رد شد: {payload.reason}"
 
     await db.commit()
     await db.refresh(transaction)
