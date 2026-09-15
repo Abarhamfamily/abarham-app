@@ -42,9 +42,14 @@ class _BottomNavigation extends StatelessWidget {
                   );
                 },
               ),
-              const _NavItem(
+              _NavItem(
                 icon: Icons.person_rounded,
                 label: 'پروفایل',
+                onTap: () {
+                  Navigator.of(context).push(
+                    AppRouter.route(builder: (_) => const ProfilePage()),
+                  );
+                },
               ),
             ],
           ),
