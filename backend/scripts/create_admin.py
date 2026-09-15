@@ -25,21 +25,20 @@ async def create_admin(username: str, password: str, full_name: str, role: str) 
     async with AsyncSessionLocal() as session:
         existing = await session.execute(select(Admin).where(Admin.username == username))
         if existing.scalar_one_or_none():
-            print(f"❌ ادمینی با نام کاربری '{username}' از قبل وجود دارد.")
+            print(f"خطا: نام کاربری '{username}' قبلاً استفاده شده است")
             return
 
         admin = Admin(
             username=username,
-            full_name=full_name,
             password_hash=hash_password(password),
+            full_name=full_name,
             role=role,
             is_active=True,
         )
         session.add(admin)
         await session.commit()
         await session.refresh(admin)
-
-        print(f"✅ ادمین با موفقیت ساخته شد: {admin.username} (id={admin.id}, role={admin.role})")
+        print(f"ادمین با موفقیت ساخته شد: {admin.username} (id={admin.id}, role={admin.role})")
 
 
 def main():
@@ -55,7 +54,7 @@ def main():
     args = parser.parse_args()
 
     if len(args.password) < 8:
-        print("❌ رمز عبور باید حداقل ۸ کاراکتر باشد.")
+        print("خطا: رمز عبور باید حداقل ۸ کاراکتر باشد")
         return
 
     asyncio.run(create_admin(args.username, args.password, args.full_name, args.role))
