@@ -19,6 +19,7 @@ class _WalletPageState extends State<WalletPage> {
   late Future<List<WalletTransaction>> _transactionsFuture;
 
   bool _isCharging = false;
+  bool _isWithdrawing = false;
 
   @override
   void initState() {
@@ -41,7 +42,7 @@ class _WalletPageState extends State<WalletPage> {
     'pending': 'در انتظار تأیید',
     'confirmed': 'تأیید شده',
     'failed': 'ناموفق',
-    'reversed': 'برگشت خورده',
+    'reversed': 'رد شده',
   };
 
   static const Map<String, String> _typeLabels = {
@@ -135,6 +136,97 @@ class _WalletPageState extends State<WalletPage> {
     }
   }
 
+  Future<void> _handleWithdrawPressed() async {
+    final amountController = TextEditingController();
+    final cardController = TextEditingController();
+
+    final result = await showDialog<Map<String, String>>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('درخواست برداشت'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: amountController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'مبلغ (تومان)',
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: cardController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'شماره کارت',
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Align(
+                alignment: Alignment.centerRight,
+                child: Text(
+                  'شما تنها می‌توانید تا ۸۰٪ موجودی خود را برداشت کنید',
+                  style: TextStyle(fontSize: 11, color: Color(0xFF718078)),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('انصراف'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop({
+                  'amount': amountController.text.trim(),
+                  'cardNumber': cardController.text.trim(),
+                });
+              },
+              child: const Text('ثبت درخواست'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (result == null || result['amount']!.isEmpty || result['cardNumber']!.isEmpty) {
+      return;
+    }
+    if (!mounted) return;
+
+    setState(() => _isWithdrawing = true);
+
+    try {
+      await _repository.requestWithdrawal(
+        amount: result['amount']!,
+        cardNumber: result['cardNumber']!,
+      );
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('درخواست برداشت شما ثبت شد و در انتظار تأیید است')),
+      );
+
+      setState(() {
+        _loadData();
+      });
+    } catch (e) {
+      if (!mounted) return;
+      final message = e.toString().replaceFirst('Exception: ', '');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isWithdrawing = false);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Directionality(
@@ -209,30 +301,71 @@ class _WalletPageState extends State<WalletPage> {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
+                        if (_isPositiveAmount(wallet.pendingBalance)) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            'در انتظار تسویه: ${_formatPrice(wallet.pendingBalance)}',
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
                         const SizedBox(height: 16),
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            onPressed: _isCharging ? null : _handleChargePressed,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.white,
-                              foregroundColor: AppColors.primary,
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: ElevatedButton(
+                                onPressed: _isCharging ? null : _handleChargePressed,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.white,
+                                  foregroundColor: AppColors.primary,
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                                child: _isCharging
+                                    ? const SizedBox(
+                                        height: 18,
+                                        width: 18,
+                                        child: CircularProgressIndicator(strokeWidth: 2),
+                                      )
+                                    : const Text(
+                                        'شارژ کیف پول',
+                                        style: TextStyle(fontWeight: FontWeight.bold),
+                                      ),
                               ),
                             ),
-                            child: _isCharging
-                                ? const SizedBox(
-                                    height: 18,
-                                    width: 18,
-                                    child: CircularProgressIndicator(strokeWidth: 2),
-                                  )
-                                : const Text(
-                                    'شارژ کیف پول',
-                                    style: TextStyle(fontWeight: FontWeight.bold),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: ElevatedButton(
+                                onPressed: _isWithdrawing ? null : _handleWithdrawPressed,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.white.withValues(alpha: .2),
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    side: const BorderSide(color: Colors.white),
                                   ),
-                          ),
+                                ),
+                                child: _isWithdrawing
+                                    ? const SizedBox(
+                                        height: 18,
+                                        width: 18,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white,
+                                        ),
+                                      )
+                                    : const Text(
+                                        'درخواست برداشت',
+                                        style: TextStyle(fontWeight: FontWeight.bold),
+                                      ),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -325,4 +458,11 @@ class _WalletPageState extends State<WalletPage> {
       ),
     );
   }
+}
+
+bool _isPositiveAmount(String value) {
+  final trimmed = value.trim();
+  if (trimmed.isEmpty) return false;
+  final asDouble = double.tryParse(trimmed) ?? 0;
+  return asDouble > 0;
 }
