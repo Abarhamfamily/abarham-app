@@ -34,3 +34,33 @@ async def try_decrement_trip_capacity(
         )
     )
     return result.rowcount > 0
+
+
+async def try_increment_trip_capacity(
+    db: AsyncSession,
+    trip_id: UUID,
+    current_version: int,
+    passenger_count: int,
+) -> bool:
+    """
+    تلاش برای افزایش ظرفیت باقی‌مانده‌ی تور (آزادسازی ظرفیت) هنگام لغو
+    ثبت‌نام، با استفاده از optimistic locking.
+
+    این تابع commit یا rollback نمی‌کند — مسئولیت تراکنش با فراخواننده است.
+
+    Returns:
+        True اگر به‌روزرسانی موفق بود (یعنی version درست بود).
+        False اگر به‌دلیل تغییر version، به‌روزرسانی هیچ ردیفی را تحت تأثیر قرار نداد.
+    """
+    result = await db.execute(
+        update(Trip)
+        .where(
+            Trip.id == trip_id,
+            Trip.version == current_version,
+        )
+        .values(
+            remaining_capacity=Trip.remaining_capacity + passenger_count,
+            version=Trip.version + 1,
+        )
+    )
+    return result.rowcount > 0

@@ -7,7 +7,7 @@ from datetime import datetime
 from decimal import Decimal
 
 from src.models.trip import Trip
-from src.services.trip_capacity import try_decrement_trip_capacity
+from src.services.trip_capacity import try_decrement_trip_capacity, try_increment_trip_capacity
 
 
 @pytest_asyncio.fixture
@@ -105,7 +105,52 @@ async def test_capacity_decrement_wrong_version(db_session: AsyncSession, test_t
     )
 
     # Assert
+
+
+@pytest.mark.asyncio
+async def test_successful_capacity_increment(db_session: AsyncSession, test_trip: Trip):
+    """Test successful capacity increment with valid version."""
+    # Arrange
+    initial_capacity = test_trip.remaining_capacity
+    initial_version = test_trip.version
+    passenger_count = 2
+
+    # Act
+    result = await try_increment_trip_capacity(
+        db=db_session,
+        trip_id=test_trip.id,
+        current_version=initial_version,
+        passenger_count=passenger_count,
+    )
+
+    # Assert
+    assert result is True
+    await db_session.commit()
+    await db_session.refresh(test_trip)
+    assert test_trip.remaining_capacity == initial_capacity + passenger_count
+    assert test_trip.version == initial_version + 1
+
+
+@pytest.mark.asyncio
+async def test_capacity_increment_wrong_version(db_session: AsyncSession, test_trip: Trip):
+    """Test capacity increment failure due to version mismatch."""
+    # Arrange
+    initial_capacity = test_trip.remaining_capacity
+    initial_version = test_trip.version
+    wrong_version = initial_version + 1  # Wrong version
+    passenger_count = 2
+
+    # Act
+    result = await try_increment_trip_capacity(
+        db=db_session,
+        trip_id=test_trip.id,
+        current_version=wrong_version,
+        passenger_count=passenger_count,
+    )
+
+    # Assert
     assert result is False
     await db_session.refresh(test_trip)
     assert test_trip.remaining_capacity == initial_capacity  # No change
-    # Note: version remains unchanged because WHERE version clause failed
+    assert test_trip.version == initial_version  # No change
+
