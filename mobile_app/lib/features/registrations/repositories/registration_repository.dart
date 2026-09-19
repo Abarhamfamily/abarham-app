@@ -11,4 +11,6 @@ abstract class RegistrationRepository {
   });
 
   Future<List<RegistrationWithTrip>> getMyRegistrations();
+
+  Future<String> cancelRegistration(String registrationId);
 }

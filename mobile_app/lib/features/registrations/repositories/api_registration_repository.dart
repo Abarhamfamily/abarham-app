@@ -1,6 +1,8 @@
 import 'dart:convert';
+import 'package:http/http.dart' as http;
 import '../../../core/constants/api_constants.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/storage/auth_token_storage.dart';
 import '../models/registration_create_response.dart';
 import '../models/registration_with_trip.dart';
 import 'registration_repository.dart';
@@ -68,5 +70,26 @@ class ApiRegistrationRepository implements RegistrationRepository {
     return data
         .map((item) => RegistrationWithTrip.fromJson(item as Map<String, dynamic>))
         .toList();
+  }
+
+  @override
+  Future<String> cancelRegistration(String registrationId) async {
+    final url = Uri.parse('${ApiConstants.baseUrl}/api/v1/registrations/$registrationId');
+    final token = await AuthTokenStorage().getAccessToken();
+    final response = await http.delete(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+
+    if (response.statusCode != 200) {
+      throw Exception(data['detail'] as String? ?? 'خطا در لغو ثبت‌نام');
+    }
+
+    return data['message'] as String? ?? 'ثبت‌نام لغو شد';
   }
 }
