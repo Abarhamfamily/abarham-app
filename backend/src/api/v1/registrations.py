@@ -15,6 +15,7 @@ from ...models.user import User
 from ...models.registration import Registration, RegistrationStatus
 from ...models.waitlist import Waitlist, WaitlistStatus
 from ...models.wallet import Wallet
+from ...models.payment import Payment, PaymentStatus
 from ...schemas.registration import (
     RegistrationCreateRequest,
     RegistrationCreateResponse,
@@ -251,7 +252,19 @@ async def cancel_registration(
         if not trip:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "تور مرتبط یافت نشد")
 
-        if registration.deposit_paid > 0:
+        payment_result = await db.execute(
+            select(Payment).where(
+                Payment.registration_id == registration.id,
+                Payment.status == PaymentStatus.PENDING.value,
+            )
+        )
+        pending_payment = payment_result.scalars().first()
+
+        refund_amount = (registration.deposit_paid or Decimal("0")) + (
+            pending_payment.amount if pending_payment else Decimal("0")
+        )
+
+        if refund_amount > 0:
             incremented = await try_increment_wallet_balance(
                 db=db,
                 user_id=current_user.id,
@@ -260,7 +273,7 @@ async def cancel_registration(
                         select(Wallet).where(Wallet.user_id == current_user.id)
                     )
                 ).scalar_one().version,
-                amount=registration.deposit_paid,
+                amount=refund_amount,
             )
             if not incremented:
                 await db.rollback()
@@ -268,6 +281,9 @@ async def cancel_registration(
                     status.HTTP_409_CONFLICT,
                     "خطا در بازگشت وجه به کیف پول، لطفاً دوباره تلاش کنید",
                 )
+
+        if pending_payment:
+            pending_payment.status = PaymentStatus.REFUNDED.value
 
         capacity_released = await try_increment_trip_capacity(
             db=db,

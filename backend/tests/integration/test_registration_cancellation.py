@@ -10,6 +10,7 @@ from src.main import app
 from src.models import User, Trip, Wallet, Notification, Waitlist
 from src.models.registration import Registration, RegistrationStatus
 from src.models.waitlist import WaitlistStatus
+from src.models.payment import Payment, PaymentStatus, PaymentType
 @pytest.mark.asyncio
 async def test_cancel_registration_refunds_wallet_and_releases_capacity(
     client, db_session
@@ -38,22 +39,33 @@ async def test_cancel_registration_refunds_wallet_and_releases_capacity(
     trip.remaining_capacity = 4
     trip.version = 2
 
-    # Registration مستقیم در DB با deposit_paid=10 و status=CONFIRMED
+    # Registration مستقیم در DB با deposit_paid=0 (همان‌طور که در واقعیت است)
     registration = Registration(
         id=uuid.uuid4(),
         user_id=user_id,
         trip_id=trip_id,
         status=RegistrationStatus.CONFIRMED.value,
         total_price=Decimal("50"),
-        deposit_paid=Decimal("10"),
-        remaining_amount=Decimal("40"),
+        deposit_paid=Decimal("0"),
+        remaining_amount=Decimal("50"),
         passenger_count=1,
         registered_at=now,
         vehicle_type="own",
         empty_seats_provided=0,
     )
 
-    db_session.add_all([user, trip, wallet, registration])
+    # Payment واقعی با status=PENDING (همان‌طور که در واقعیت ایجاد می‌شود)
+    payment = Payment(
+        id=uuid.uuid4(),
+        registration_id=registration.id,
+        user_id=user_id,
+        amount=Decimal("10"),
+        type=PaymentType.DEPOSIT.value,
+        status=PaymentStatus.PENDING.value,
+        idempotency_key=f"registration:{registration.id}:deposit",
+    )
+
+    db_session.add_all([user, trip, wallet, registration, payment])
     await db_session.commit()
 
     initial_balance = Decimal("100")
@@ -93,6 +105,13 @@ async def test_cancel_registration_refunds_wallet_and_releases_capacity(
     )
     reg = result_reg.scalar_one()
     assert reg.status == RegistrationStatus.CANCELLED.value
+
+    # بررسی Payment به REFUNDED تغییر کرده
+    result_pay = await db_session.execute(
+        select(Payment).where(Payment.id == payment.id)
+    )
+    pay = result_pay.scalar_one()
+    assert pay.status == PaymentStatus.REFUNDED.value
 
 @pytest.mark.asyncio
 async def test_cancel_registration_notifies_first_waitlist_entry(
