@@ -23,8 +23,10 @@ from ...schemas.registration import (
     PaymentOut,
 )
 from ...schemas.waitlist import WaitlistOut
-from ...services.trip_capacity import try_decrement_trip_capacity
-from ...services.wallet_balance import try_decrement_wallet_balance
+from ...services.trip_capacity import try_decrement_trip_capacity, try_increment_trip_capacity
+from ...services.wallet_balance import try_decrement_wallet_balance, try_increment_wallet_balance
+from ...models.notification import Notification
+from ...schemas.registration import SimpleMessageResponse
 from ...services.payment_idempotency import get_or_create_deposit_payment
 
 router = APIRouter()
@@ -237,9 +239,86 @@ async def cancel_registration(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    # TODO (Phase 4): لغو ثبت‌نام باید ظرفیت تور را آزاد کند (با همان قفل
-    # خوش‌بینانه) و در صورت وجود Waitlist، نفر بعدی را مطلع کند.
-    raise HTTPException(
-        status.HTTP_501_NOT_IMPLEMENTED,
-        "Registration cancellation not implemented yet — Phase 4",
-    )
+    registration = await db.get(Registration, registration_id)
+    if not registration or registration.user_id != current_user.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "ثبت‌نام یافت نشد")
+
+    if registration.status == RegistrationStatus.CANCELLED.value:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "این ثبت‌نام قبلاً لغو شده است")
+
+    try:
+        trip = await db.get(Trip, registration.trip_id)
+        if not trip:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "تور مرتبط یافت نشد")
+
+        if registration.deposit_paid > 0:
+            incremented = await try_increment_wallet_balance(
+                db=db,
+                user_id=current_user.id,
+                current_version=(
+                    await db.execute(
+                        select(Wallet).where(Wallet.user_id == current_user.id)
+                    )
+                ).scalar_one().version,
+                amount=registration.deposit_paid,
+            )
+            if not incremented:
+                await db.rollback()
+                raise HTTPException(
+                    status.HTTP_409_CONFLICT,
+                    "خطا در بازگشت وجه به کیف پول، لطفاً دوباره تلاش کنید",
+                )
+
+        capacity_released = await try_increment_trip_capacity(
+            db=db,
+            trip_id=trip.id,
+            current_version=trip.version,
+            passenger_count=registration.passenger_count,
+        )
+        if not capacity_released:
+            await db.rollback()
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                "خطا در آزادسازی ظرفیت تور، لطفاً دوباره تلاش کنید",
+            )
+
+        registration.status = RegistrationStatus.CANCELLED.value
+        registration.cancelled_at = datetime.now(timezone.utc)
+
+        waitlist_result = await db.execute(
+            select(Waitlist)
+            .where(
+                Waitlist.trip_id == trip.id,
+                Waitlist.status == WaitlistStatus.WAITING.value,
+            )
+            .order_by(Waitlist.position.asc())
+            .limit(1)
+        )
+        first_waiting = waitlist_result.scalar_one_or_none()
+
+        if first_waiting:
+            first_waiting.status = WaitlistStatus.NOTIFIED.value
+            first_waiting.notified_at = datetime.now(timezone.utc)
+
+            notification = Notification(
+                user_id=first_waiting.user_id,
+                type="waitlist_spot_available",
+                title="ظرفیت خالی شد",
+                content=f"یک جای خالی برای تور «{trip.title}» ایجاد شده است. می‌توانید اکنون ثبت‌نام کنید.",
+                data={"trip_id": str(trip.id)},
+            )
+            db.add(notification)
+
+        await db.commit()
+
+        return SimpleMessageResponse(success=True, message="ثبت‌نام با موفقیت لغو شد")
+
+    except HTTPException:
+        await db.rollback()
+        raise
+    except Exception:
+        await db.rollback()
+        raise HTTPException(
+            status.HTTP_500_INTERNAL_SERVER_ERROR,
+            "خطای داخلی سرور در پردازش لغو ثبت‌نام",
+        )
