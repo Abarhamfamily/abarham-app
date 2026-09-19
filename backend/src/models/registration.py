@@ -23,7 +23,6 @@ class RegistrationStatus(str, enum.Enum):
 class Registration(Base, UuidPkMixin, TimestampMixin):
     __tablename__ = "registrations"
     __table_args__ = (
-        UniqueConstraint("user_id", "trip_id", name="uq_registrations_user_trip"),
         CheckConstraint("total_price >= 0", name="ck_registrations_total_price_non_negative"),
         CheckConstraint("deposit_paid >= 0", name="ck_registrations_deposit_paid_non_negative"),
         CheckConstraint("remaining_amount >= 0", name="ck_registrations_remaining_non_negative"),

@@ -50,6 +50,7 @@ async def create_registration(
             select(Registration).where(
                 Registration.user_id == current_user.id,
                 Registration.trip_id == trip.id,
+                Registration.status != RegistrationStatus.CANCELLED.value,
             )
         )
         if existing_registration.scalar_one_or_none() is not None:
