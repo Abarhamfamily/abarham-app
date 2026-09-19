@@ -12,17 +12,19 @@ class MyRegistrationsPage extends StatefulWidget {
 }
 
 class _MyRegistrationsPageState extends State<MyRegistrationsPage> {
+  final ApiRegistrationRepository _repository = ApiRegistrationRepository();
   late Future<List<RegistrationWithTrip>> _future;
+  String? _cancellingId;
 
   @override
   void initState() {
     super.initState();
-    _future = ApiRegistrationRepository().getMyRegistrations();
+    _future = _repository.getMyRegistrations();
   }
 
   void _retry() {
     setState(() {
-      _future = ApiRegistrationRepository().getMyRegistrations();
+      _future = _repository.getMyRegistrations();
     });
   }
 
@@ -39,6 +41,11 @@ class _MyRegistrationsPageState extends State<MyRegistrationsPage> {
     'other': 'با ماشین سایر اعضا',
   };
 
+  static const Set<String> _cancellableStatuses = {
+    'pending_payment',
+    'confirmed',
+  };
+
   String _formatPrice(String rawPrice) {
     final integerPart = rawPrice.split('.').first;
     final groups = <String>[];
@@ -49,6 +56,59 @@ class _MyRegistrationsPageState extends State<MyRegistrationsPage> {
       end = start;
     }
     return '${groups.join(',')} تومان';
+  }
+
+  Future<void> _handleCancelPressed(RegistrationWithTrip reg) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('لغو ثبت‌نام'),
+          content: Text(
+            'آیا از لغو ثبت‌نام تور «${reg.tripTitle}» مطمئن هستید؟ مبلغ پرداختی به کیف پول شما بازگردانده می‌شود.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('انصراف'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('لغو ثبت‌نام'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true) return;
+    if (!mounted) return;
+
+    setState(() => _cancellingId = reg.id);
+
+    try {
+      final message = await _repository.cancelRegistration(reg.id);
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+
+      setState(() {
+        _future = _repository.getMyRegistrations();
+      });
+    } catch (e) {
+      if (!mounted) return;
+      final message = e.toString().replaceFirst('Exception: ', '');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _cancellingId = null);
+      }
+    }
   }
 
   @override
@@ -95,6 +155,9 @@ class _MyRegistrationsPageState extends State<MyRegistrationsPage> {
               separatorBuilder: (_, __) => const SizedBox(height: 12),
               itemBuilder: (context, index) {
                 final reg = registrations[index];
+                final isCancellable = _cancellableStatuses.contains(reg.status);
+                final isCancelling = _cancellingId == reg.id;
+
                 return Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
@@ -150,6 +213,26 @@ class _MyRegistrationsPageState extends State<MyRegistrationsPage> {
                           style: const TextStyle(
                             fontSize: 12,
                             color: Color(0xFF718078),
+                          ),
+                        ),
+                      ],
+                      if (isCancellable) ...[
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton(
+                            onPressed: isCancelling ? null : () => _handleCancelPressed(reg),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.red,
+                              side: const BorderSide(color: Colors.red),
+                            ),
+                            child: isCancelling
+                                ? const SizedBox(
+                                    height: 16,
+                                    width: 16,
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  )
+                                : const Text('لغو ثبت‌نام'),
                           ),
                         ),
                       ],
