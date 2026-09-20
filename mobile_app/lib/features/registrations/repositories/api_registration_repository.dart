@@ -5,6 +5,7 @@ import '../../../core/network/api_client.dart';
 import '../../../core/storage/auth_token_storage.dart';
 import '../models/registration_create_response.dart';
 import '../models/registration_with_trip.dart';
+import '../models/payment_result.dart';
 import 'registration_repository.dart';
 
 class ApiRegistrationRepository implements RegistrationRepository {
@@ -91,5 +92,32 @@ class ApiRegistrationRepository implements RegistrationRepository {
     }
 
     return data['message'] as String? ?? 'ثبت‌نام لغو شد';
+  }
+
+  @override
+  Future<PaymentResult> payRemainingAmount({
+    required String registrationId,
+    required String amount,
+  }) async {
+    final url = Uri.parse('${ApiConstants.baseUrl}/api/v1/payments');
+    final idempotencyKey = 'app:$registrationId:remaining:${DateTime.now().millisecondsSinceEpoch ~/ 60000}';
+
+    final response = await _apiClient.authenticatedPost(
+      url,
+      body: jsonEncode({
+        'registration_id': registrationId,
+        'amount': amount,
+        'idempotency_key': idempotencyKey,
+        'method': 'wallet',
+      }),
+    );
+
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+
+    if (response.statusCode != 201) {
+      throw Exception(data['detail'] as String? ?? 'خطا در پرداخت');
+    }
+
+    return PaymentResult.fromJson(data);
   }
 }

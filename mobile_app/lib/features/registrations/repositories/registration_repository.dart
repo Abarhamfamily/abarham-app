@@ -1,5 +1,6 @@
 import '../models/registration_create_response.dart';
 import '../models/registration_with_trip.dart';
+import '../models/payment_result.dart';
 
 abstract class RegistrationRepository {
   Future<RegistrationCreateResponse> createRegistration({
@@ -13,4 +14,9 @@ abstract class RegistrationRepository {
   Future<List<RegistrationWithTrip>> getMyRegistrations();
 
   Future<String> cancelRegistration(String registrationId);
+
+  Future<PaymentResult> payRemainingAmount({
+    required String registrationId,
+    required String amount,
+  });
 }
