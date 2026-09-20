@@ -15,6 +15,7 @@ class _MyRegistrationsPageState extends State<MyRegistrationsPage> {
   final ApiRegistrationRepository _repository = ApiRegistrationRepository();
   late Future<List<RegistrationWithTrip>> _future;
   String? _cancellingId;
+  String? _payingId;
 
   @override
   void initState() {
@@ -56,6 +57,11 @@ class _MyRegistrationsPageState extends State<MyRegistrationsPage> {
       end = start;
     }
     return '${groups.join(',')} تومان';
+  }
+
+  bool _hasRemainingBalance(RegistrationWithTrip reg) {
+    final value = double.tryParse(reg.remainingAmount) ?? 0;
+    return value > 0;
   }
 
   Future<void> _handleCancelPressed(RegistrationWithTrip reg) async {
@@ -111,6 +117,65 @@ class _MyRegistrationsPageState extends State<MyRegistrationsPage> {
     }
   }
 
+  Future<void> _handlePayRemainingPressed(RegistrationWithTrip reg) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('پرداخت باقی‌مانده'),
+          content: Text(
+            'مبلغ ${_formatPrice(reg.remainingAmount)} از کیف پول شما برای تور «${reg.tripTitle}» کسر می‌شود. ادامه می‌دهید؟',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('انصراف'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('پرداخت'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true) return;
+    if (!mounted) return;
+
+    setState(() => _payingId = reg.id);
+
+    try {
+      final result = await _repository.payRemainingAmount(
+        registrationId: reg.id,
+        amount: reg.remainingAmount,
+      );
+      if (!mounted) return;
+
+      final message = result.status == 'already_processed'
+          ? 'این پرداخت قبلاً پردازش شده است'
+          : 'پرداخت با موفقیت انجام شد';
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+
+      setState(() {
+        _future = _repository.getMyRegistrations();
+      });
+    } catch (e) {
+      if (!mounted) return;
+      final message = e.toString().replaceFirst('Exception: ', '');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _payingId = null);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Directionality(
@@ -157,6 +222,8 @@ class _MyRegistrationsPageState extends State<MyRegistrationsPage> {
                 final reg = registrations[index];
                 final isCancellable = _cancellableStatuses.contains(reg.status);
                 final isCancelling = _cancellingId == reg.id;
+                final canPayRemaining = isCancellable && _hasRemainingBalance(reg);
+                final isPaying = _payingId == reg.id;
 
                 return Container(
                   padding: const EdgeInsets.all(16),
@@ -216,8 +283,42 @@ class _MyRegistrationsPageState extends State<MyRegistrationsPage> {
                           ),
                         ),
                       ],
-                      if (isCancellable) ...[
+                      if (canPayRemaining) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          'باقی‌مانده: ${_formatPrice(reg.remainingAmount)}',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.orange,
+                          ),
+                        ),
+                      ],
+                      if (canPayRemaining) ...[
                         const SizedBox(height: 12),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: isPaying ? null : () => _handlePayRemainingPressed(reg),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              foregroundColor: Colors.white,
+                            ),
+                            child: isPaying
+                                ? const SizedBox(
+                                    height: 16,
+                                    width: 16,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : const Text('پرداخت باقی‌مانده'),
+                          ),
+                        ),
+                      ],
+                      if (isCancellable) ...[
+                        const SizedBox(height: 8),
                         SizedBox(
                           width: double.infinity,
                           child: OutlinedButton(
