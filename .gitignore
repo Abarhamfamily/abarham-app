@@ -45,3 +45,7 @@ backend/uploads/*
 my-little-app-lovable-backup/
 
 my-little-app-lovable-backup/
+
+# Uploads (root)
+uploads/
+backend/uploads/

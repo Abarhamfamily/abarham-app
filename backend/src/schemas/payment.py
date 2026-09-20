@@ -24,6 +24,7 @@ class PaymentOut(BaseModel):
     receipt_url: Optional[str] = None
     confirmed_at: Optional[datetime] = None
     created_at: datetime
+    idempotency_key: str
 
     model_config = {"from_attributes": True}
 
