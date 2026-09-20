@@ -3,8 +3,13 @@ part of '../pages/home_page.dart';
 class _Header extends StatelessWidget {
   final VoidCallback? onLogout;
   final VoidCallback? onMyRegistrations;
+  final VoidCallback? onNotifications;
 
-  const _Header({this.onLogout, this.onMyRegistrations});
+  const _Header({
+    this.onLogout,
+    this.onMyRegistrations,
+    this.onNotifications,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -79,7 +84,7 @@ class _Header extends StatelessWidget {
           Stack(
             children: [
               IconButton(
-                onPressed: () {},
+                onPressed: onNotifications,
                 icon: const Icon(
                   Icons.notifications_none_rounded,
                   size: 27,

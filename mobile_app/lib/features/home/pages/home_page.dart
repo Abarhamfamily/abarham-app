@@ -12,6 +12,7 @@ import '../../auth/pages/login_page.dart';
 import '../../registrations/pages/my_registrations_page.dart';
 import '../../wallet/pages/wallet_page.dart';
 import '../../profile/pages/profile_page.dart';
+import '../../notifications/pages/notifications_page.dart';
 
 
 part '../widgets/header.dart';
@@ -107,6 +108,11 @@ class _HomePageState extends State<HomePage> {
                   onMyRegistrations: () {
                     Navigator.of(context).push(
                       AppRouter.route(builder: (_) => const MyRegistrationsPage()),
+                    );
+                  },
+                  onNotifications: () {
+                    Navigator.of(context).push(
+                      AppRouter.route(builder: (_) => const NotificationsPage()),
                     );
                   },
                 ),
