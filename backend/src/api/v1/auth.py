@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta, timezone
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,7 +13,9 @@ from ...core.security import (
     create_refresh_token,
     decode_token,
 )
+from ...models.otp import OtpCode, OtpPurpose
 from ...models.user import User
+from ...services.sms_provider import generate_otp_code, send_sms
 from ...schemas.auth import (
     RegisterRequest,
     RegisterResponse,
@@ -39,20 +43,76 @@ async def register(payload: RegisterRequest, db: AsyncSession = Depends(get_db))
         is_active=False,  # تا وریفای OTP فعال نمی‌شود
     )
     db.add(user)
+    await db.flush()
+
+    code = generate_otp_code()
+    now = datetime.now(timezone.utc)
+    otp = OtpCode(
+        user_id=user.id,
+        code=code,
+        purpose=OtpPurpose.REGISTER.value,
+        expires_at=now + timedelta(minutes=5),
+        created_at=now,
+    )
+    db.add(otp)
     await db.commit()
     await db.refresh(user)
 
-    # TODO (Phase 2): تولید OTP واقعی و ارسال از طریق SMS provider،
-    # مطابق Section G مستند معماری. فعلاً فقط کاربر غیرفعال ساخته می‌شود.
-    return RegisterResponse(user_id=user.id, message="کد تایید برای شما ارسال خواهد شد (Phase 2)")
+    send_sms(user.phone_number, f"کد تایید آبرهام: {code}")
+
+    return RegisterResponse(
+        user_id=user.id,
+        message="کد تایید برای شما ارسال شد",
+        otp_code=code,
+    )
 
 
 @router.post("/verify-otp", response_model=TokenResponse)
 async def verify_otp(payload: VerifyOtpRequest, db: AsyncSession = Depends(get_db)):
-    # TODO (Phase 2): پیاده‌سازی واقعی جدول OTP و بررسی انقضا (طبق Section G).
-    raise HTTPException(
-        status.HTTP_501_NOT_IMPLEMENTED,
-        "OTP verification not implemented yet — Phase 2",
+    user_result = await db.execute(select(User).where(User.phone_number == payload.phone_number))
+    user = user_result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "کاربری با این شماره یافت نشد")
+
+    if user.is_active:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "این حساب قبلاً فعال شده است")
+
+    otp_result = await db.execute(
+        select(OtpCode)
+        .where(
+            OtpCode.user_id == user.id,
+            OtpCode.purpose == OtpPurpose.REGISTER.value,
+            OtpCode.is_used == False,
+        )
+        .order_by(OtpCode.created_at.desc())
+        .limit(1)
+    )
+    otp = otp_result.scalar_one_or_none()
+
+    if not otp:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "کد تاییدی برای این کاربر یافت نشد")
+
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    if otp.expires_at < now:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "کد تایید منقضی شده است")
+
+    if otp.attempts >= 5:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "تعداد تلاش‌های مجاز به پایان رسیده است")
+
+    if otp.code != payload.otp:
+        otp.attempts += 1
+        await db.commit()
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "کد تایید نادرست است")
+
+    otp.is_used = True
+    user.is_active = True
+    await db.commit()
+    await db.refresh(user)
+
+    return TokenResponse(
+        access_token=create_access_token(str(user.id)),
+        refresh_token=create_refresh_token(str(user.id)),
+        user=UserOut.model_validate(user),
     )
 
 

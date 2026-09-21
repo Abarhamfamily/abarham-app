@@ -24,6 +24,7 @@ class RegisterRequest(BaseModel):
 class RegisterResponse(BaseModel):
     user_id: UUID
     message: str
+    otp_code: str
 
 
 class VerifyOtpRequest(BaseModel):
