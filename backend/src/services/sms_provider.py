@@ -1,0 +1,23 @@
+import random
+
+
+def generate_otp_code() -> str:
+    """
+    تولید یک کد OTP تصادفی ۶ رقمی.
+    """
+    return f"{random.randint(0, 999999):06d}"
+
+
+def send_sms(phone_number: str, message: str) -> bool:
+    """
+    لایه‌ی انتزاعی برای ارسال پیامک.
+
+    در نسخه‌ی فعلی (mock)، فقط پیام را در لاگ چاپ می‌کند و همیشه True
+    برمی‌گرداند.
+
+    در آینده، این تابع باید با یک فراخوانی واقعی به API ارائه‌دهنده‌ی
+    SMS (مثلاً کاوه‌نگار) جایگزین شود، بر اساس تنظیمات SMS_PROVIDER در
+    core/config.py.
+    """
+    print(f"[MOCK SMS] به {phone_number}: {message}")
+    return True
