@@ -75,4 +75,72 @@ class ApiAuthRepository implements AuthRepository {
     }
     await _tokenStorage.clearTokens();
   }
+
+  @override
+  Future<Map<String, dynamic>> register({
+    required String phoneNumber,
+    required String fullName,
+    required String password,
+  }) async {
+    final url = Uri.parse('${ApiConstants.baseUrl}/api/v1/auth/register');
+    final response = await _client.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'phone_number': phoneNumber,
+        'full_name': fullName,
+        'password': password,
+      }),
+    );
+
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+
+    switch (response.statusCode) {
+      case 201:
+        return data;
+      case 409:
+        throw Exception('این شماره تماس قبلاً ثبت شده است');
+      default:
+        throw Exception(data['detail'] as String? ?? 'خطا در ثبت‌نام');
+    }
+  }
+
+  @override
+  Future<TokenResponse> verifyOtp({
+    required String phoneNumber,
+    required String otp,
+  }) async {
+    final url = Uri.parse('${ApiConstants.baseUrl}/api/v1/auth/verify-otp');
+    final response = await _client.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'phone_number': phoneNumber, 'otp': otp}),
+    );
+
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+
+    if (response.statusCode != 200) {
+      throw Exception(data['detail'] as String? ?? 'کد تایید نامعتبر است');
+    }
+
+    final userData = data['user'] as Map<String, dynamic>;
+    final user = User(
+      id: userData['id'] as String,
+      phoneNumber: userData['phone_number'] as String,
+      fullName: userData['full_name'] as String,
+      email: userData['email'] as String?,
+      nationalId: userData['national_id'] as String?,
+      isActive: userData['is_active'] as bool,
+    );
+    final tokenResponse = TokenResponse(
+      accessToken: data['access_token'] as String,
+      refreshToken: data['refresh_token'] as String,
+      user: user,
+    );
+    await _tokenStorage.saveTokens(
+      accessToken: tokenResponse.accessToken,
+      refreshToken: tokenResponse.refreshToken,
+    );
+    return tokenResponse;
+  }
 }
