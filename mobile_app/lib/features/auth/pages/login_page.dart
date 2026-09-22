@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../repositories/auth_repository.dart';
 import '../repositories/api_auth_repository.dart';
 import '../../home/pages/home_page.dart';
+import 'register_page.dart';
 class LoginPage extends StatefulWidget {
   const LoginPage({Key? key}) : super(key: key);
 
@@ -89,6 +90,15 @@ class _LoginPageState extends State<LoginPage> {
                     style: const TextStyle(color: Colors.red),
                   ),
                 ),
+              const SizedBox(height: 16),
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const RegisterPage()),
+                  );
+                },
+                child: const Text('حساب ندارید؟ ثبت‌نام کنید'),
+              ),
             ],
           ),
         ),
