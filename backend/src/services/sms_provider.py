@@ -1,4 +1,7 @@
+import logging
 import random
+
+logger = logging.getLogger(__name__)
 
 
 def generate_otp_code() -> str:
@@ -12,12 +15,12 @@ def send_sms(phone_number: str, message: str) -> bool:
     """
     لایه‌ی انتزاعی برای ارسال پیامک.
 
-    در نسخه‌ی فعلی (mock)، فقط پیام را در لاگ چاپ می‌کند و همیشه True
+    در نسخه‌ی فعلی (mock)، فقط پیام را در لاگ ثبت می‌کند و همیشه True
     برمی‌گرداند.
 
     در آینده، این تابع باید با یک فراخوانی واقعی به API ارائه‌دهنده‌ی
     SMS (مثلاً کاوه‌نگار) جایگزین شود، بر اساس تنظیمات SMS_PROVIDER در
     core/config.py.
     """
-    print(f"[MOCK SMS] به {phone_number}: {message}")
+    logger.info("[MOCK SMS] to %s: %s", phone_number, message)
     return True
